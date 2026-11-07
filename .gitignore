@@ -1,0 +1,19 @@
+# Local environment
+.venv/
+env/
+__pycache__/
+*.py[cod]
+
+# Settings / secrets
+.env
+
+# Django
+db.sqlite3
+/media/
+/staticfiles/
+
+# OS / editor
+.vscode/
+.idea/
+.DS_Store
+*.log

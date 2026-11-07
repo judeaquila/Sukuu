@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}My learning — Sukuu{% endblock %}
+{% block content %}
+<h1 class="text-2xl font-extrabold">My learning</h1>
+<p class="mt-1 text-sm text-gray-500">Welcome back{{ request.user.full_name|default:''|stringformat:"s" }} — continue where you left off.</p>
+
+{% if enrollments %}
+  <div class="mt-6 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+    {% for enrollment in enrollments %}
+      <div class="flex flex-col overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
+        <a href="{{ enrollment.course.get_absolute_url }}" class="aspect-video overflow-hidden bg-gradient-to-br from-brand to-brand-light flex items-center justify-center">
+          {% if enrollment.course.cover_image %}
+            <img src="{{ enrollment.course.cover_image.url }}" class="h-full w-full object-cover" alt="">
+          {% else %}
+            <span class="text-4xl font-black text-white/40">{{ enrollment.course.title|slice:":2"|upper }}</span>
+          {% endif %}
+        </a>
+        <div class="flex flex-1 flex-col p-4">
+          <h3 class="font-bold">{{ enrollment.course.title }}</h3>
+          <p class="mt-1 text-sm text-gray-500">Enrolled {{ enrollment.created|date:"d M Y" }}</p>
+          <div class="mt-auto flex gap-2 pt-4">
+            {% with first_lesson=enrollment.course.modules_related.first.lessons.first %}
+              <a href="{% if first_lesson %}{{ first_lesson.get_absolute_url }}{% else %}{% url 'community:community' enrollment.course.slug %}{% endif %}"
+                 class="flex-1 rounded-lg bg-brand px-3 py-2 text-center text-sm font-semibold text-white hover:bg-brand-dark">Continue</a>
+            {% endwith %}
+            <a href="{% url 'community:community' enrollment.course.slug %}" class="rounded-lg border border-brand px-3 py-2 text-sm font-semibold text-brand hover:bg-brand/5">💬</a>
+          </div>
+        </div>
+      </div>
+    {% endfor %}
+  </div>
+{% else %}
+  <div class="mt-6 rounded-2xl border border-dashed border-gray-300 bg-white p-12 text-center text-gray-500">
+    <p class="text-lg font-semibold text-gray-700">No courses yet</p>
+    <p class="mt-1">Find something worth learning in the marketplace.</p>
+    <a href="{% url 'home' %}" class="mt-4 inline-block rounded-lg bg-brand px-5 py-2.5 font-semibold text-white hover:bg-brand-dark">Browse courses</a>
+  </div>
+{% endif %}
+{% endblock %}

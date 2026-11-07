@@ -1,0 +1,133 @@
+{% extends "base.html" %}
+{% load extras %}
+{% block title %}{{ lesson.title }} — {{ course.title }}{% endblock %}
+{% block content %}
+
+<div class="grid gap-6 lg:grid-cols-4">
+  <!-- Player -->
+  <div class="space-y-5 lg:col-span-3">
+    <div class="overflow-hidden rounded-3xl border border-gray-100 bg-gray-950 shadow-sm">
+      {% if lesson.video_file %}
+        <video class="aspect-video w-full" controls preload="metadata" src="{{ lesson.video_file.url }}"></video>
+      {% elif lesson.audio_file %}
+        <div class="flex aspect-video flex-col items-center justify-center gap-6 px-6">
+          {% if course.cover_image %}
+            <img src="{{ course.cover_image.url }}" alt="" class="h-24 w-24 rounded-2xl object-cover shadow-lg">
+          {% else %}
+            <div class="flex h-24 w-24 items-center justify-center rounded-2xl bg-brand-light text-5xl">🎧</div>
+          {% endif %}
+          <p class="text-sm font-semibold text-white/80">Audio lesson — listen here or download below</p>
+          <audio controls preload="metadata" src="{{ lesson.audio_file.url }}" class="w-full max-w-xl"></audio>
+        </div>
+      {% else %}
+        {% with video=lesson.video_url|embed_url %}
+          {% if video and 'youtu' in video or 'vimeo' in video %}
+            <div class="aspect-video">
+              <iframe src="{{ video }}" class="h-full w-full" allowfullscreen
+                      allow="accelerometer; autoplay; encrypted-media; picture-in-picture"></iframe>
+            </div>
+          {% elif video %}
+            <video class="aspect-video w-full" controls preload="metadata" src="{{ video }}"></video>
+          {% else %}
+            <div class="flex aspect-video items-center justify-center text-white/50">No video for this lesson</div>
+          {% endif %}
+        {% endwith %}
+      {% endif %}
+    </div>
+
+    <div class="rounded-3xl border border-gray-100 bg-white p-6 md:p-8">
+      <div class="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <p class="text-xs font-semibold uppercase tracking-wide text-brand-light">{{ course.title }}</p>
+          <h1 class="mt-1 text-2xl font-extrabold">{{ lesson.title }}</h1>
+        </div>
+        {% if enrollment and not is_creator %}
+          <form method="post" action="{% url 'courses:lesson_toggle_complete' course.slug lesson.slug %}">
+            {% csrf_token %}
+            <button class="rounded-xl px-4 py-2.5 text-sm font-semibold
+              {% if lesson.slug in completed_slugs %}bg-green-100 text-green-700 hover:bg-green-200{% else %}bg-brand text-white hover:bg-brand-dark{% endif %}">
+              {% if lesson.slug in completed_slugs %}✓ Completed — undo{% else %}Mark complete{% endif %}
+            </button>
+          </form>
+        {% endif %}
+      </div>
+
+      {% if lesson.content %}
+        <div class="mt-5 border-t border-gray-100 pt-5 text-gray-700 leading-relaxed">{{ lesson.content|linebreaks }}</div>
+      {% endif %}
+
+      {% if enrollment or is_creator %}
+        {% if lesson.video_file or lesson.audio_file %}
+          <div class="mt-5 border-t border-gray-100 pt-5">
+            <h3 class="text-sm font-bold text-gray-800">📀 Lesson media</h3>
+            <ul class="mt-2 space-y-1.5 text-sm">
+              {% if lesson.video_file %}
+                <li><a href="{{ lesson.video_file.url }}" download class="text-brand font-semibold hover:underline">⬇️ Download video ({{ lesson.video_file.name|truncatechars:40 }})</a></li>
+              {% endif %}
+              {% if lesson.audio_file %}
+                <li><a href="{{ lesson.audio_file.url }}" download class="text-brand font-semibold hover:underline">⬇️ Download audio ({{ lesson.audio_file.name|truncatechars:40 }})</a></li>
+              {% endif %}
+            </ul>
+          </div>
+        {% endif %}
+
+        {% if course.materials.all %}
+          <div class="mt-5 border-t border-gray-100 pt-5">
+            <h3 class="text-sm font-bold text-gray-800">📎 Course materials</h3>
+            <ul class="mt-2 space-y-1.5 text-sm">
+              {% for material in course.materials.all %}
+                <li class="flex items-center justify-between gap-2">
+                  <a href="{{ material.file.url }}" download class="text-brand font-semibold hover:underline">
+                    {{ material.icon }} {{ material.title }}
+                    <em class="text-xs text-gray-400">.{{ material.ext }}{% if material.size_kb %} · {{ material.size_kb }} KB{% endif %}</em>
+                  </a>
+                </li>
+              {% endfor %}
+            </ul>
+          </div>
+        {% endif %}
+      {% endif %}
+
+      <div class="mt-6 flex justify-between border-t border-gray-100 pt-5 text-sm font-semibold">
+        {% if prev_lesson %}
+          <a href="{{ prev_lesson.get_absolute_url }}" class="rounded-lg border border-gray-200 px-4 py-2 hover:bg-gray-50">← {{ prev_lesson.title|truncatechars:30 }}</a>
+        {% else %}<span></span>{% endif %}
+        {% if next_lesson %}
+          <a href="{{ next_lesson.get_absolute_url }}" class="rounded-lg bg-brand px-4 py-2 text-white hover:bg-brand-dark">{{ next_lesson.title|truncatechars:30 }} →</a>
+        {% endif %}
+      </div>
+    </div>
+
+    <a href="{% url 'community:community' course.slug %}"
+       class="block rounded-3xl border border-gold/40 bg-gold/10 p-6 text-center font-semibold hover:bg-gold/20">
+      💬 Ask questions in the course community →
+    </a>
+  </div>
+
+  <!-- Sidebar curriculum -->
+  <aside class="lg:col-span-1">
+    <div class="sticky top-24 max-h-[80vh] overflow-y-auto rounded-3xl border border-gray-100 bg-white p-4 shadow-md">
+      <p class="px-2 pb-3 text-sm font-bold">Course content</p>
+      {% for module in modules %}
+        <p class="px-2 pt-3 text-xs font-bold uppercase tracking-wide text-gray-500">{{ module.title }}</p>
+        <ul class="mt-1 space-y-0.5 text-sm">
+          {% for l in module.lessons.all %}
+            <li>
+              <a href="{{ l.get_absolute_url }}"
+                 class="flex items-center gap-2 rounded-lg px-2 py-2 {% if l.slug == lesson.slug %}bg-brand text-white{% else %}hover:bg-gray-50{% endif %}">
+                <span class="w-4 text-center">
+                  {% if enrollment or is_creator %}
+                    {% if l.slug in completed_slugs %}✅{% else %}▶️{% endif %}
+                  {% else %}🔒{% endif %}
+                </span>
+                <span class="flex-1 truncate">{{ l.title }}</span>
+              </a>
+            </li>
+          {% endfor %}
+        </ul>
+      {% endfor %}
+    </div>
+  </aside>
+</div>
+
+{% endblock %}

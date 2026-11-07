@@ -1,0 +1,121 @@
+{% extends "base.html" %}
+{% block title %}Manage: {{ course.title }} — Sukuu{% endblock %}
+{% block content %}
+<div class="flex flex-wrap items-center justify-between gap-4">
+  <div>
+    <a href="{% url 'courses:dashboard' %}" class="text-sm font-semibold text-gray-500 hover:text-gray-700">← Creator studio</a>
+    <h1 class="mt-1 text-2xl font-extrabold">{{ course.title }}</h1>
+    <p class="mt-1 flex items-center gap-2 text-sm text-gray-500">
+      <span class="rounded-full px-2.5 py-1 text-xs font-semibold
+        {% if course.status == 'published' %}bg-green-100 text-green-700{% else %}bg-yellow-100 text-yellow-700{% endif %}">
+        {{ course.status }}
+      </span>
+      {% if course.status == 'draft' %}
+        Publish it from <a href="{% url 'courses:course_update' course.slug %}" class="font-semibold text-brand hover:underline">course settings</a> (set status to Published).
+      {% endif %}
+    </p>
+  </div>
+  <a href="{% url 'courses:course_update' course.slug %}" class="rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-semibold hover:bg-gray-50">⚙️ Course settings</a>
+</div>
+
+<div class="mt-6 grid gap-6 lg:grid-cols-3">
+  <!-- Curriculum builder -->
+  <div class="space-y-6 lg:col-span-2">
+    <div class="rounded-3xl border border-gray-100 bg-white p-6 shadow-sm">
+      <div class="flex items-center justify-between">
+        <h2 class="text-lg font-bold">Curriculum</h2>
+        <div class="flex gap-2 text-sm font-semibold">
+          <a href="{% url 'courses:module_create' course.slug %}" class="rounded-lg bg-brand px-3 py-2 text-white hover:bg-brand-dark">+ Module</a>
+          <a href="{% url 'courses:lesson_create' course.slug %}" class="rounded-lg border border-brand px-3 py-2 text-brand hover:bg-brand/5">+ Lesson</a>
+        </div>
+      </div>
+      {% if modules %}
+        <div class="mt-4 space-y-4">
+          {% for module in modules %}
+            <div class="rounded-2xl border border-gray-100 bg-gray-50/60 p-4">
+              <div class="flex flex-wrap items-center justify-between gap-2">
+                <p class="font-bold">{{ forloop.counter }}. {{ module.title }}</p>
+                <div class="flex gap-2 text-xs font-semibold">
+                  <a href="{% url 'courses:module_update' course.slug module.id %}" class="rounded-md border border-gray-200 bg-white px-2.5 py-1 hover:bg-gray-100">✏️ Edit</a>
+                  <a href="{% url 'courses:module_delete' course.slug module.id %}" class="rounded-md border border-red-200 bg-white px-2.5 py-1 text-red-600 hover:bg-red-50">🗑 Delete</a>
+                </div>
+              </div>
+              <ul class="mt-2 space-y-1 text-sm">
+                {% for lesson in module.lessons.all %}
+                  <li class="flex items-center justify-between gap-2 py-1 text-gray-700">
+                    <span class="truncate">
+                      ▶ {{ lesson.title }}
+                      {% if lesson.is_free_preview %}<em class="text-xs text-gold">(free)</em>{% endif %}
+                      {% if lesson.video_file %}<em class="text-xs text-gray-400">[uploaded video]</em>{% endif %}
+                      {% if lesson.audio_file %}<em class="text-xs text-gray-400">[audio]</em>{% endif %}
+                      <span class="text-xs text-gray-400">#{{ lesson.order }}</span>
+                    </span>
+                    <span class="flex shrink-0 gap-2 text-xs font-semibold">
+                      <a href="{{ lesson.get_absolute_url }}" class="text-brand hover:underline">Open</a>
+                      <a href="{% url 'courses:lesson_update' course.slug lesson.id %}" class="rounded-md border border-gray-200 bg-white px-2 py-1 hover:bg-gray-100">✏️ Edit</a>
+                      <a href="{% url 'courses:lesson_delete' course.slug lesson.id %}" class="rounded-md border border-red-200 bg-white px-2 py-1 text-red-600 hover:bg-red-50">🗑</a>
+                    </span>
+                  </li>
+                {% empty %}
+                  <li class="text-sm text-gray-400">No lessons yet — add one.</li>
+                {% endfor %}
+              </ul>
+            </div>
+          {% endfor %}
+        </div>
+      {% else %}
+        <p class="mt-3 text-sm text-gray-500">No modules yet. A course doesn't sell without content — start with a module, then add lessons to it.</p>
+      {% endif %}
+    </div>
+
+    <!-- Materials manager -->
+    <div class="rounded-3xl border border-gray-100 bg-white p-6 shadow-sm">
+      <div class="flex items-center justify-between">
+        <h2 class="text-lg font-bold">📎 Course materials</h2>
+        <a href="{% url 'courses:material_create' course.slug %}" class="rounded-lg border border-brand px-3 py-2 text-sm font-semibold text-brand hover:bg-brand/5">+ Upload material</a>
+      </div>
+      <p class="mt-1 text-xs text-gray-500">PDFs, worksheets, images, zip files — enrolled students can download them.</p>
+      {% if course.materials.all %}
+        <ul class="mt-3 divide-y divide-gray-100 text-sm">
+          {% for material in course.materials.all %}
+            <li class="flex items-center justify-between gap-2 py-2">
+              <span class="truncate">{{ material.icon }} {{ material.title }}
+                <em class="text-xs text-gray-400">.{{ material.ext }}{% if material.size_kb %} · {{ material.size_kb }} KB{% endif %}</em>
+              </span>
+              <form method="post" action="{% url 'courses:material_delete' course.slug material.id %}">
+                {% csrf_token %}
+                <button class="rounded-md border border-red-200 px-2.5 py-1 text-xs font-semibold text-red-600 hover:bg-red-50">🗑 Remove</button>
+              </form>
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <p class="mt-3 text-sm text-gray-500">No materials uploaded yet.</p>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Students -->
+  <aside>
+    <div class="rounded-3xl border border-gray-100 bg-white p-6 shadow-sm">
+      <h2 class="text-lg font-bold">Recent enrollments</h2>
+      {% if students %}
+        <ul class="mt-3 divide-y divide-gray-100 text-sm">
+          {% for e in students %}
+            <li class="flex items-center justify-between gap-2 py-2">
+              <span class="truncate">{{ e.user.full_name|default:e.user.email }}</span>
+              <span class="text-xs text-gray-400">{{ e.source }} · {{ e.created|date:"d M" }}</span>
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <p class="mt-3 text-sm text-gray-500">No students yet. When they buy or join for free, they'll appear here.</p>
+      {% endif %}
+    </div>
+    <div class="mt-4 rounded-3xl border border-gold/40 bg-gold/10 p-6 text-sm">
+      💬 Community is live at
+      <a href="{% url 'community:community' course.slug %}" class="font-bold text-brand hover:underline">this course's community</a>.
+    </div>
+  </aside>
+</div>
+{% endblock %}

@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}Log in — Sukuu{% endblock %}
+{% block content %}
+<div class="mx-auto max-w-md">
+  <div class="rounded-3xl border border-gray-100 bg-white p-8 shadow-sm">
+    <h1 class="text-2xl font-extrabold">Welcome back</h1>
+    <p class="mt-1 text-sm text-gray-500">Log in with your email and password.</p>
+    <form method="post" class="mt-6 space-y-4">
+      {% csrf_token %}
+      {% for field in form %}
+        <div>
+          <label for="{{ field.id_for_label }}" class="mb-1 block text-sm font-semibold">{{ field.label }}</label>
+          {{ field }}
+          {% for error in field.errors %}<p class="mt-1 text-xs text-red-600">{{ error }}</p>{% endfor %}
+        </div>
+      {% endfor %}
+      {% if form.non_field_errors %}<p class="text-sm text-red-600">{{ form.non_field_errors }}</p>{% endif %}
+      <button class="w-full rounded-xl bg-brand py-3 font-semibold text-white hover:bg-brand-dark">Log in</button>
+    </form>
+    <p class="mt-4 text-center text-sm text-gray-500">
+      New here? <a href="{% url 'accounts:signup' %}" class="font-semibold text-brand hover:underline">Create an account</a>
+    </p>
+  </div>
+</div>
+{% endblock %}

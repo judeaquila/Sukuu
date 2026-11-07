@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+{% load extras %}
+{% load humanize %}
+{% block title %}Marketplace — Sukuu{% endblock %}
+{% block content %}
+
+<!-- Hero -->
+<section class="rounded-3xl bg-brand px-6 py-12 text-center text-white md:px-12 md:py-16">
+  <h1 class="text-3xl font-extrabold leading-tight md:text-5xl">
+    Learn from Africa's best.<br>
+    <span class="text-gold">Teach what you know.</span>
+  </h1>
+  <p class="mx-auto mt-4 max-w-2xl text-brand-50/90 md:text-lg">
+    Sukuu is the online school built for Ghana &amp; Africa — pay with cedis via card or
+    mobile money, join your course's private community, and learn skills that earn.
+  </p>
+  <div class="mt-6 flex flex-wrap items-center justify-center gap-3">
+    <a href="#courses" class="rounded-xl bg-gold px-6 py-3 font-semibold text-gray-900 hover:bg-gold-dark">Browse courses</a>
+    <a href="{% url 'accounts:signup' %}" class="rounded-xl border border-white/30 px-6 py-3 font-semibold hover:bg-white/10">Become a creator</a>
+  </div>
+</section>
+
+<!-- Courses -->
+<section id="courses" class="mt-10">
+  <div class="mb-6 flex flex-wrap items-end justify-between gap-4">
+    <div>
+      <h2 class="text-2xl font-bold">Course marketplace</h2>
+      <p class="text-sm text-gray-500">{{ total_published }} course{{ total_published|pluralize }} published</p>
+    </div>
+    <form method="get" class="flex flex-wrap items-center gap-2 text-sm">
+      <input type="search" name="q" value="{{ query }}" placeholder="Search…"
+             class="rounded-lg border border-gray-300 px-3 py-2 outline-none focus:border-brand focus:ring-brand">
+      <select name="category" class="rounded-lg border border-gray-300 px-3 py-2 outline-none focus:border-brand focus:ring-brand">
+        <option value="">All categories</option>
+        {% for cat in top_categories %}
+          <option value="{{ cat.value }}" {% if cat.value == category %}selected{% endif %}>{{ cat.label }}</option>
+        {% endfor %}
+      </select>
+      <button class="rounded-lg bg-brand px-4 py-2 text-white hover:bg-brand-dark">Filter</button>
+    </form>
+  </div>
+
+  {% if page_obj.object_list %}
+    <div class="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+      {% for course in page_obj.object_list %}
+        <a href="{% url 'courses:course_detail' course.slug %}"
+           class="group flex flex-col overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
+          <div class="aspect-video overflow-hidden bg-gradient-to-br from-brand to-brand-light flex items-center justify-center">
+            {% if course.cover_image %}
+              <img src="{{ course.cover_image.url }}" alt="{{ course.title }}" class="h-full w-full object-cover">
+            {% else %}
+              <span class="text-4xl font-black text-white/40">{{ course.title|slice:":2"|upper }}</span>
+            {% endif %}
+          </div>
+          <div class="flex flex-1 flex-col p-4">
+            <span class="text-[11px] font-semibold uppercase tracking-wide text-brand-light">{{ course.get_category_display }}</span>
+            <h3 class="mt-1 font-bold leading-snug group-hover:text-brand">{{ course.title }}</h3>
+            <p class="mt-1 text-sm text-gray-500 line-clamp-2">{{ course.summary }}</p>
+            <div class="mt-auto flex items-center justify-between pt-4 text-sm">
+              <span class="truncate text-gray-600">by {{ course.creator.full_name|default:course.creator.email }}</span>
+              <span class="rounded-full px-3 py-1 font-bold
+                {% if course.price == 0 %}bg-green-100 text-green-700{% else %}bg-gold/20 text-gray-800{% endif %}">
+                {{ course.price|ghs }}
+              </span>
+            </div>
+          </div>
+        </a>
+      {% endfor %}
+    </div>
+
+    {% if page_obj.has_other_pages %}
+      <div class="mt-8 flex justify-center gap-2 text-sm font-medium">
+        {% if page_obj.has_previous %}
+          <a href="?{{ request.GET.urlencode }}&amp;page={{ page_obj.previous_page_number }}" class="rounded-lg border border-gray-200 bg-white px-4 py-2 hover:bg-gray-50">← Prev</a>
+        {% endif %}
+        <span class="rounded-lg px-4 py-2 text-gray-500">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+        {% if page_obj.has_next %}
+          <a href="?{{ request.GET.urlencode }}&amp;page={{ page_obj.next_page_number }}" class="rounded-lg border border-gray-200 bg-white px-4 py-2 hover:bg-gray-50">Next →</a>
+        {% endif %}
+      </div>
+    {% endif %}
+  {% else %}
+    <div class="rounded-2xl border border-dashed border-gray-300 bg-white p-12 text-center text-gray-500">
+      <p class="text-lg font-semibold text-gray-700">No courses found</p>
+      <p class="mt-1">Try a different search, or be the first to publish one!</p>
+      {% if is_creator or user.role == 'creator' %}
+        <a href="{% url 'courses:course_create' %}" class="mt-4 inline-block rounded-lg bg-brand px-5 py-2.5 font-semibold text-white hover:bg-brand-dark">Create a course</a>
+      {% endif %}
+    </div>
+  {% endif %}
+</section>
+
+{% endblock %}

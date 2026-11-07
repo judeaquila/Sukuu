@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% load extras %}
+{% block title %}{{ creator.full_name|default:creator.email }} — Sukuu{% endblock %}
+{% block content %}
+
+<section class="rounded-3xl bg-brand px-6 py-10 text-center text-white md:px-12">
+  {% if creator.creator_profile.avatar %}
+    <img src="{{ creator.creator_profile.avatar.url }}" alt=""
+         class="mx-auto mb-4 h-20 w-20 rounded-full border-4 border-white/30 object-cover">
+  {% endif %}
+  <h1 class="text-3xl font-extrabold">{{ creator.full_name|default:creator.email }}</h1>
+  {% if creator.creator_profile.headline %}
+    <p class="mt-2 text-brand-50/90">{{ creator.creator_profile.headline }}</p>
+  {% endif %}
+  {% if creator.creator_profile.bio %}
+    <p class="mx-auto mt-3 max-w-2xl text-sm text-white/80">{{ creator.creator_profile.bio }}</p>
+  {% endif %}
+</section>
+
+<section class="mt-8">
+  <h2 class="text-2xl font-bold">Courses by {{ creator.full_name|default:creator.email }}</h2>
+  {% if courses %}
+    <div class="mt-4 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+      {% for course in courses %}
+        <a href="{% url 'courses:course_detail' course.slug %}"
+           class="group flex flex-col overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
+          <div class="aspect-video overflow-hidden bg-gradient-to-br from-brand to-brand-light flex items-center justify-center">
+            {% if course.cover_image %}
+              <img src="{{ course.cover_image.url }}" alt="{{ course.title }}" class="h-full w-full object-cover">
+            {% else %}
+              <span class="text-4xl font-black text-white/40">{{ course.title|slice:":2"|upper }}</span>
+            {% endif %}
+          </div>
+          <div class="flex flex-1 flex-col p-4">
+            <h3 class="font-bold leading-snug group-hover:text-brand">{{ course.title }}</h3>
+            <p class="mt-1 text-sm text-gray-500 line-clamp-2">{{ course.summary }}</p>
+            <div class="mt-auto flex items-center justify-between pt-4 text-sm">
+              <span class="text-xs text-gray-500">{{ course.get_level_display }}</span>
+              <span class="rounded-full px-3 py-1 font-bold
+                {% if course.price == 0 %}bg-green-100 text-green-700{% else %}bg-gold/20 text-gray-800{% endif %}">
+                {{ course.price|ghs }}
+              </span>
+            </div>
+          </div>
+        </a>
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="mt-4 rounded-2xl border border-dashed border-gray-300 bg-white p-10 text-center text-gray-500">
+      <p class="font-semibold text-gray-700">No published courses yet</p>
+      <p class="mt-1 text-sm">This creator is preparing something great — check back soon.</p>
+    </div>
+  {% endif %}
+</section>
+
+{% endblock %}
