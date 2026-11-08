@@ -2,7 +2,7 @@
 {% block title %}My learning — Sukuu{% endblock %}
 {% block content %}
 <h1 class="text-2xl font-extrabold">My learning</h1>
-<p class="mt-1 text-sm text-gray-500">Welcome back{{ request.user.full_name|default:''|stringformat:"s" }} — continue where you left off.</p>
+<p class="mt-1 text-sm text-gray-500">Welcome back {{ request.user.full_name|default:''|stringformat:"s" }} — continue where you left off.</p>
 
 {% if enrollments %}
   <div class="mt-6 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">

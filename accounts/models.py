@@ -40,6 +40,7 @@ class User(AbstractUser):
     )
     phone = models.CharField(max_length=20, blank=True)
     country = models.CharField(max_length=2, default="GH")
+    avatar = models.ImageField(upload_to="avatars/", blank=True, null=True)
 
     objects = UserManager()
 
@@ -54,7 +55,29 @@ class User(AbstractUser):
 
     @property
     def is_creator(self):
-        return self.role == self.Role.CREATOR  # or superuser managing courses
+        return self.role == self.Role.CREATOR
+
+    @property
+    def avatar_url(self):
+        """Returns the avatar URL from user model, creator profile, or None."""
+        # Check if the main user model has an avatar
+        if self.avatar:
+            return self.avatar.url
+        
+        # If they're a creator, check their creator profile avatar
+        try:
+            if self.is_creator and hasattr(self, "creator_profile") and self.creator_profile.avatar:
+                return self.creator_profile.avatar.url
+        except Exception:
+            pass
+            
+        return None
+
+    @property
+    def initial(self):
+        """Returns the first letter of the full name or email for fallback."""
+        name = self.full_name or self.email
+        return name[:1].upper() if name else ""
 
 
 class CreatorProfile(models.Model):

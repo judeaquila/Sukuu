@@ -1,14 +1,13 @@
 from django import forms
 from django.contrib import messages
 from django.contrib.auth import authenticate, login as auth_login
-from django.contrib.auth import views as auth_views
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 
 from courses.models import Enrollment
-from .forms import CreatorProfileForm, SignUpForm
-from .models import CreatorProfile, User
+from .forms import CreatorProfileForm, SignUpForm, UserProfileForm
+from .models import User
 
 
 class EmailAuthenticationForm(forms.Form):
@@ -91,13 +90,36 @@ def my_learning(request):
 
 @login_required
 def profile_edit(request):
-    profile = CreatorProfile.objects.get_or_create(user=request.user)[0]
-    form = CreatorProfileForm(request.POST or None, request.FILES or None, instance=profile)
-    if request.method == "POST" and form.is_valid():
-        form.save()
-        messages.success(request, "Profile updated!")
-        return redirect("accounts:my_learning")
-    return render(request, "accounts/profile_edit.html", {"form": form})
+    user = request.user
+    creator_profile = getattr(user, "creator_profile", None)
+
+    if request.method == "POST":
+        user_form = UserProfileForm(request.POST, request.FILES, instance=user)
+        creator_form = (
+            CreatorProfileForm(request.POST, instance=creator_profile)
+            if user.is_creator and creator_profile
+            else None
+        )
+
+        if user_form.is_valid() and (creator_form is None or creator_form.is_valid()):
+            user_form.save()
+            if creator_form:
+                creator_form.save()
+            messages.success(request, "Your profile has been updated successfully.")
+            return redirect("accounts:my_learning")
+    else:
+        user_form = UserProfileForm(instance=user)
+        creator_form = (
+            CreatorProfileForm(instance=creator_profile)
+            if user.is_creator and creator_profile
+            else None
+        )
+
+    context = {
+        "user_form": user_form,
+        "creator_form": creator_form,
+    }
+    return render(request, "accounts/profile_edit.html", context)
 
 
 def creator_public(request, username):
