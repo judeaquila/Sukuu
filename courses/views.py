@@ -4,20 +4,16 @@ Creators own their dashboard; students see a classroom-style learning area.
 All money movement goes through `payments.paystack`.
 """
 
-import uuid
-
-from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator
-from django.db import transaction as db_transaction
 from django.db.models import Count, Q
 from django.http import Http404
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 
 from payments.models import Transaction
-from payments.paystack import PaystackAPI, PaystackInitError
+from payments.services import payout_summary
 
 from .forms import CourseForm, LessonForm, MaterialForm, ModuleForm
 from .models import Course, Enrollment, Lesson, LessonProgress, Material, Module, enrollment_for
@@ -89,7 +85,9 @@ def course_detail(request, slug):
 
 @login_required
 def enroll(request, slug):
-    """Start the checkout: free = instant access; paid = Paystack hosted checkout."""
+    """Free courses = instant access; paid = Paystack inline modal (guests too)."""
+    from payments.views import course_checkout
+
     course = _course_or_404(slug)
     enrollment = enrollment_for(request.user, course)
     if enrollment:
@@ -108,47 +106,8 @@ def enroll(request, slug):
             return redirect(first_lesson.get_absolute_url())
         return redirect("courses:course_detail", course.slug)
 
-    # Paid course → create a pending transaction and redirect to Paystack checkout.
-    reference = f"OLTSCH-{uuid.uuid4().hex[:12].upper()}"
-    with db_transaction.atomic():
-        Transaction.objects.create(
-            user=request.user,
-            course=course,
-            reference=reference,
-            amount_minor=course.price_minor,
-            currency=settings.CURRENCY,
-            status=Transaction.Status.PENDING,
-        )
-    callback_url = request.build_absolute_uri(reverse("payments:callback"))
-    try:
-        api = PaystackAPI()
-        response = api.initialize(
-            email=request.user.email,
-            amount_minor=course.price_minor,
-            reference=reference,
-            callback_url=callback_url,
-            metadata={
-                "course_id": course.id,
-                "course_title": course.title,
-                "user_id": request.user.id,
-                "custom_fields": [
-                    {"display_name": "Course", "variable_name": "course", "value": course.title}
-                ],
-            },
-        )
-    except PaystackInitError as exc:
-        Transaction.objects.filter(reference=reference).update(
-            status=Transaction.Status.FAILED, raw_response=str(exc)
-        )
-        messages.error(request, f"Payment could not be started: {exc}")
-        return redirect("courses:course_detail", course.slug)
-
-    url = response.get("data", {}).get("authorization_url")
-    Transaction.objects.filter(reference=reference).update(raw_response=response)
-    if not url:
-        messages.error(request, "Payment could not be started. Please try again.")
-        return redirect("courses:course_detail", course.slug)
-    return redirect(url)
+    # Paid course → the guest-friendly checkout with the inline payment modal.
+    return course_checkout(request, slug)
 
 
 # ---------------------------------------------------------------------------
@@ -248,6 +207,7 @@ def dashboard(request):
             "gross_minor": gross_minor,
             "fees_minor": fees_minor,
             "earnings_minor": gross_minor - fees_minor,
+            "payout_summary": payout_summary(request.user),
         },
     )
 

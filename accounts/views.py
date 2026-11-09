@@ -43,7 +43,8 @@ class EmailAuthenticationForm(forms.Form):
 
 def signup(request):
     if request.user.is_authenticated:
-        return redirect(_post_login_url(request.user))
+        return redirect(_next_url(request) or _post_login_url(request.user))
+
     if request.method == "POST":
         form = SignUpForm(request.POST)
         if form.is_valid():
@@ -52,20 +53,27 @@ def signup(request):
             messages.success(
                 request, f"Akwaaba! Welcome to the school, {user.full_name or user.email}!"
             )
-            return redirect(_post_login_url(user))
+            return redirect(_next_url(request) or _post_login_url(user))
     else:
         form = SignUpForm()
     return render(request, "accounts/signup.html", {"form": form})
 
 
+def _next_url(request):
+    """A ?next= destination (course page etc.) after logging in / signing up."""
+    candidate = request.POST.get("next") or request.GET.get("next") or ""
+    return candidate if candidate.startswith("/") and not candidate.startswith("//") else ""
+
+
 def user_login(request):
     if request.user.is_authenticated:
-        return redirect(_post_login_url(request.user))
+        return redirect(_next_url(request) or _post_login_url(request.user))
     if request.method == "POST":
         form = EmailAuthenticationForm(request, data=request.POST)
         if form.is_valid():
-            auth_login(request, form.get_user())
-            return redirect(request.GET.get("next") or _post_login_url(form.get_user()))
+            user = form.get_user()
+            auth_login(request, user)
+            return redirect(_next_url(request) or _post_login_url(user))
     else:
         form = EmailAuthenticationForm()
     return render(request, "accounts/login.html", {"form": form})

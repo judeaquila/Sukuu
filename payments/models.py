@@ -14,9 +14,15 @@ class Transaction(models.Model):
         FAILED = "failed", "Failed"
         ABANDONED = "abandoned", "Abandoned"
 
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="transactions")
+    user = models.ForeignKey(
+        User, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name="transactions",
+        help_text="Null for guest checkouts that pay before creating an account",
+    )
     course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name="transactions")
     reference = models.CharField(max_length=80, unique=True, db_index=True)
+    email = models.EmailField(default="", blank=True, help_text="Payer email (user's, or entered at checkout as a guest)")
+    full_name = models.CharField(max_length=120, blank=True)
     amount_minor = models.PositiveIntegerField(help_text="Total the student paid, in pesewas")
     currency = models.CharField(max_length=8, default=settings.CURRENCY)
     platform_fee_minor = models.PositiveIntegerField(default=0, help_text="Platform commission, in pesewas")
@@ -69,7 +75,11 @@ class PayoutAccount(models.Model):
     )
     provider_name = models.CharField(max_length=80, help_text="Display name, e.g. MTN Mobile Money")
     account_number = models.CharField(max_length=20, help_text="MoMo number or bank account number")
-    account_name = models.CharField(max_length=80, help_text="Registered name on the account")
+    account_name = models.CharField(max_length=80, default="", blank=True, help_text="Registered name on the account")
+    verified_name = models.CharField(
+        max_length=80, blank=True,
+        help_text="Account name resolved from Paystack (bank accounts are verified before saving)",
+    )
     recipient_code = models.CharField(
         max_length=40, blank=True,
         help_text="Paystack transfer recipient code (auto-created when the API is configured)",
@@ -93,6 +103,7 @@ class Withdrawal(models.Model):
 
     class Status(models.TextChoices):
         REQUESTED = "requested", "Requested"
+        PROCESSING = "processing", "Processing (Paystack transfer initiated)"
         PAID = "paid", "Paid"
         REJECTED = "rejected", "Rejected"
 

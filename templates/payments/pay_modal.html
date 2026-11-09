@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+{% load extras %}
+{% block title %}Checkout — {{ transaction.course.title }} — Sukuu{% endblock %}
+{% block content %}
+
+<div class="mx-auto max-w-lg px-4 py-10">
+  <div class="rounded-3xl border border-gray-100 bg-white p-8 shadow-md">
+    <p class="text-xs font-semibold uppercase tracking-wider text-brand">Sukuu Checkout</p>
+    <h1 class="mt-1 text-xl font-extrabold">{{ transaction.course.title }}</h1>
+
+    <div class="mt-4 flex items-center gap-4 rounded-2xl bg-gray-50 p-4 text-sm">
+      <div class="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-brand text-lg font-black text-white">
+        {{ transaction.course.title|slice:":1"|upper }}
+      </div>
+      <div class="flex-1">
+        <p class="font-semibold text-gray-800">Lifetime access + private community</p>
+        <p class="text-xs text-gray-500">Secure checkout via Paystack · Card · MTN MoMo · Telecel · AirtelTigo</p>
+      </div>
+      <p class="text-2xl font-extrabold text-brand">{{ transaction.amount_minor|pesewas }}</p>
+    </div>
+
+    <p class="mt-4 text-sm text-gray-600">
+      Paying as <strong>{{ transaction.email }}</strong>
+      {% if transaction.full_name %}({{ transaction.full_name }}){% endif %}.
+      Reference: <code class="text-xs">{{ transaction.reference }}</code>
+    </p>
+
+    <button id="open-paystack"
+            class="mt-6 w-full rounded-xl bg-gold px-6 py-3.5 font-bold text-gray-900 shadow hover:bg-gold-dark">
+      Pay {{ transaction.amount_minor|pesewas }} now
+    </button>
+    <p id="pay-opened" class="mt-3 hidden text-center text-sm text-amber-700">
+      💳 Complete your payment in the Paystack window. If it didn't open, click the button above again.
+    </p>
+
+    <div class="mt-6 border-t border-gray-100 pt-4 text-center text-xs text-gray-500">
+      {% if transaction.user %}
+        After payment you'll be taken back to the course page automatically.
+      {% else %}
+        After payment you'll be asked to create your Sukuu account — your purchase is already recorded.
+      {% endif %}
+      <a href="{% url 'payments:checkout_pending' transaction.reference %}" class="ml-1 underline hover:text-gray-700">Check payment status</a>
+    </div>
+  </div>
+</div>
+
+{% if trigger_paystack %}
+<script src="https://js.paystack.co/v1/inline.js"></script>
+<script>
+  document.addEventListener("DOMContentLoaded", function () {
+    var completed = false;
+    function setupHandler() {
+      return PaystackPop.setup({
+        key: "{{ paystack_pub_key }}",
+        email: "{{ transaction.email|escapejs }}",
+        amount: {{ amount_value }},
+        currency: "{{ transaction.currency }}",
+        ref: "{{ transaction.reference }}",
+        callback: function (response) {
+          completed = true;
+          window.location.href = "{% url 'payments:callback' %}?reference=" + encodeURIComponent(response.reference || "{{ transaction.reference }}");
+        },
+        onClose: function () {
+          if (!completed) {
+            document.getElementById("pay-opened").classList.remove("hidden");
+          }
+        }
+      });
+    }
+    document.getElementById("open-paystack").addEventListener("click", function () {
+      setupHandler().openIframe();
+    });
+    setupHandler().openIframe();
+  });
+</script>
+{% endif %}
+
+{% endblock %}

@@ -1,0 +1,35 @@
+{% extends "admin/base_site.html" %}
+{% block content %}
+<p>Rejecting <strong>{{ withdrawals|length }}</strong> payout request(s). The funds return to each creator's balance and they'll be notified by email with the reason below.</p>
+<table class="w-full border-collapse text-sm" style="max-width: 720px">
+  <thead>
+    <tr class="border-b text-left">
+      <th class="py-2 pr-4">Creator</th>
+      <th class="py-2 pr-4">Amount</th>
+      <th class="py-2 pr-4">Destination</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for w in withdrawals %}
+      <tr class="border-b">
+        <td class="py-2 pr-4">{{ w.user.email }}</td>
+        <td class="py-2 pr-4">{{ w.amount }}</td>
+        <td class="py-2 pr-4">{{ w.provider_name }} {{ w.account_number }} ({{ w.account_name }})</td>
+      </tr>
+    {% endfor %}
+  </tbody>
+</table>
+<form method="post" class="mt-4">
+  {% csrf_token %}
+  <input type="hidden" name="ids" value="{{ ids }}">
+  <div class="form-row" style="max-width: 720px">
+    <label for="id_reason" class="required">Reason (shown to the creator)</label>
+    <textarea name="reason" id="id_reason" rows="4" class="vLargeTextField"
+              placeholder="e.g. Account details couldn't be verified — please re-check and request again."></textarea>
+  </div>
+  <div class="submit-row" style="margin-top: 12px">
+    <input type="submit" value="Reject &amp; notify creators" class="default">
+    <a href="{% url 'admin:payments_withdrawal_changelist' %}" class="button cancel-link">Cancel</a>
+  </div>
+</form>
+{% endblock %}

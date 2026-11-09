@@ -39,10 +39,15 @@
             <li class="flex items-center justify-between gap-2 py-2">
               <span>
                 <strong>{{ account.provider_name }}</strong> {{ account.masked_account }}<br>
-                <em class="text-xs text-gray-500">{{ account.account_name }}</em>
+                <em class="text-xs text-gray-500">{{ account.account_name }}
+                  {% if account.verified_name and account.verified_name != account.account_name %}
+                    <span title="Verified with Paystack">· verified as “{{ account.verified_name }}”</span>
+                  {% endif %}</em>
               </span>
               <div class="flex items-center gap-2 text-xs">
                 {% if account.recipient_code %}<span class="rounded-full bg-green-100 px-2 py-0.5 font-semibold text-green-700">Paystack-ready</span>{% endif %}
+                <a href="{% url 'payments:payouts' %}?edit={{ account.id }}"
+                   class="rounded-md border border-gray-200 px-2.5 py-1 font-semibold text-gray-600 hover:bg-gray-50">Edit</a>
                 <form method="post" action="{% url 'payments:payout_account_delete' account.id %}">
                   {% csrf_token %}
                   <button class="rounded-md border border-red-200 px-2.5 py-1 font-semibold text-red-600 hover:bg-red-50">Remove</button>
@@ -57,10 +62,17 @@
     </div>
 
     <div class="rounded-3xl border border-gray-100 bg-white p-6 shadow-sm">
-      <h3 class="font-bold">Add a payout account</h3>
+      {% if editing %}
+        <h3 class="font-bold">Edit payout account</h3>
+        <p class="mt-1 text-xs text-gray-500">{{ editing.provider_name }} {{ editing.masked_account }}</p>
+      {% else %}
+        <h3 class="font-bold">Add a payout account</h3>
+        <p class="mt-1 text-xs text-gray-500">We verify bank account names with Paystack where supported; Mobile Money names are taken as entered.</p>
+      {% endif %}
       <form method="post" class="mt-3 space-y-3 text-sm">
         {% csrf_token %}
-        <input type="hidden" name="action" value="add_account">
+        <input type="hidden" name="action" value="{% if editing %}edit_account{% else %}add_account{% endif %}">
+        {% if editing %}<input type="hidden" name="account_id" value="{{ editing.id }}">{% endif %}
         <div class="grid grid-cols-2 gap-3">
           <div>
             <label class="mb-1 block text-xs font-semibold">Type</label>
@@ -74,13 +86,24 @@
         <div>
           <label class="mb-1 block text-xs font-semibold">Account number (MoMo number / bank acc)</label>
           {{ account_form.account_number }}
+          <p class="text-xs text-gray-500" id="verify-hint">
+            For bank accounts we try to fetch the registered name from Paystack — if that isn't supported for your bank, the name you type is saved.
+            For Mobile Money, type the registered name yourself (Paystack has no name lookup for MoMo numbers).
+          </p>
         </div>
         <div>
           <label class="mb-1 block text-xs font-semibold">Registered name</label>
           {{ account_form.account_name }}
         </div>
         {% if account_form.non_field_errors %}<p class="text-xs text-red-600">{{ account_form.non_field_errors }}</p>{% endif %}
-        <button class="rounded-xl bg-brand px-5 py-2.5 font-semibold text-white hover:bg-brand-dark">Save account</button>
+        <div class="flex items-center gap-3">
+          <button class="rounded-xl bg-brand px-5 py-2.5 font-semibold text-white hover:bg-brand-dark">
+            {% if editing %}Save changes{% else %}Save account{% endif %}
+          </button>
+          {% if editing %}
+            <a href="{% url 'payments:payouts' %}" class="text-sm font-semibold text-gray-500 hover:text-gray-700">Cancel</a>
+          {% endif %}
+        </div>
       </form>
     </div>
   </div>
@@ -115,16 +138,26 @@
           {% for w in history %}
             <li class="flex items-center justify-between gap-2 py-2">
               <span>
-                <strong class="tabular-nums">{{ w.amount|pesewas }}</strong>
+                <strong class="tabular-nums">GH₵{{ w.amount }}</strong>
                 <em class="text-xs text-gray-500">{{ w.provider_name|default:w.get_kind_display }}</em><br>
                 <span class="text-xs text-gray-400">{{ w.created|date:"d M Y, H:i" }}
-                  {% if w.processed_at %}· processed {{ w.processed_at|date:"d M Y" }}{% endif %}</span>
+                  {% if w.processed_at %}· processed {{ w.processed_at|date:"d M Y" }}{% endif %}
+                  {% if w.note %}<em>· {{ w.note }}</em>{% endif %}</span>
               </span>
-              <span class="rounded-full px-2.5 py-1 text-xs font-semibold
-                {% if w.status == 'paid' %}bg-green-100 text-green-700
-                {% elif w.status == 'requested' %}bg-yellow-100 text-yellow-700
-                {% else %}bg-red-100 text-red-600{% endif %}">
-                {{ w.status }}
+              <span class="flex items-center gap-2">
+                {% if w.status == 'requested' %}
+                  <form method="post" action="{% url 'payments:payout_request_cancel' w.id %}">
+                    {% csrf_token %}
+                    <button class="rounded-md border border-gray-200 px-2 py-1 text-xs font-semibold text-gray-500 hover:bg-gray-50">Cancel</button>
+                  </form>
+                {% endif %}
+                <span class="rounded-full px-2.5 py-1 text-xs font-semibold
+                  {% if w.status == 'paid' %}bg-green-100 text-green-700
+                  {% elif w.status == 'requested' %}bg-yellow-100 text-yellow-700
+                  {% elif w.status == 'processing' %}bg-blue-100 text-blue-700
+                  {% else %}bg-red-100 text-red-600{% endif %}">
+                  {{ w.status }}
+                </span>
               </span>
             </li>
           {% endfor %}
@@ -136,4 +169,77 @@
   </div>
 </div>
 
+{% endblock %}
+{% block scripts %}
+<script>
+  (function () {
+    var verifyUrl = "{% url 'payments:payout_account_verify' %}";
+    var kindSelect = document.getElementById("id_kind");
+    var providerSelect = document.getElementById("id_provider_code");
+    var numberInput = document.getElementById("id_account_number");
+    var nameInput = document.getElementById("id_account_name");
+    var hint = document.getElementById("verify-hint");
+    if (!kindSelect || !providerSelect) return;
+
+    // Show only the provider group matching the account type
+    function filterProviders() {
+      var kind = kindSelect.value; // "momo" | "bank"
+      var firstVisible = null;
+      providerSelect.querySelectorAll("optgroup").forEach(function (group) {
+        var show = (kind === "bank" ? group.label === "Banks" : group.label === "Mobile Money");
+        group.hidden = !show;
+        group.querySelectorAll("option").forEach(function (option) {
+          option.disabled = !show;
+          if (show && !firstVisible) firstVisible = option;
+        });
+      });
+      var selected = providerSelect.selectedOptions[0];
+      if (!selected || selected.disabled) {
+        providerSelect.value = firstVisible ? firstVisible.value : "";
+      }
+      if (hint) {
+        hint.textContent = kind === "bank"
+          ? "Typing the account number should fetch the registered name from Paystack — if not, enter it yourself."
+          : "Paystack has no name lookup for MoMo numbers — type the registered name yourself.";
+      }
+    }
+
+    // Auto-resolve the registered bank name from the account number
+    function lookupAccountName() {
+      if (kindSelect.value !== "bank") return;
+      var code = providerSelect.value, number = (numberInput.value || "").trim();
+      if (!code || number.length < 5) return;
+      nameInput.readOnly = true;
+      if (hint) hint.textContent = "Verifying with Paystack…";
+      fetch(verifyUrl + "?provider_code=" + encodeURIComponent(code)
+            + "&account_number=" + encodeURIComponent(number))
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+          nameInput.readOnly = false;
+          hint.classList.remove("text-red-600", "text-green-700");
+          if (data.account_name && !data.error) {
+            nameInput.value = data.account_name;
+            hint.textContent = "✓ Paystack verified this account as \"" + data.account_name + "\".";
+            hint.classList.add("text-green-700");
+          } else {
+            hint.textContent = (data.error || "Could not verify that account — check the number.")
+              + " You can type the registered name yourself and save.";
+            hint.classList.add("text-red-600");
+          }
+        })
+        .catch(function () {
+          nameInput.readOnly = false;
+          hint.textContent = "Verification failed — the account is still verified again on save.";
+        });
+    }
+
+    kindSelect.addEventListener("change", filterProviders);
+    providerSelect.addEventListener("change", lookupAccountName);
+    numberInput.addEventListener("blur", lookupAccountName);
+    if (numberInput.value.trim().length >= 5 && nameInput.value.trim() === "") {
+      lookupAccountName(); // editing an existing bank account without a stored name
+    }
+    filterProviders();
+  })();
+</script>
 {% endblock %}

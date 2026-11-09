@@ -3,15 +3,23 @@ from django import forms
 from .models import PayoutAccount
 
 
-# Known mobile-money provider codes on Paystack for Ghana.
+# Fallback mobile-money providers when Paystack's live list is unreachable.
+# Codes match Paystack's API (uppercase, per the docs).
 MOMO_PROVIDERS = [
-    ("mtn", "MTN Mobile Money"),
-    ("vod", "Telecel Cash (Vodafone)"),
-    ("atl", "AirtelTigo Money"),
+    ("MTN", "MTN Mobile Money"),
+    ("VOD", "Telecel Cash (Vodafone)"),
+    ("ATL", "AirtelTigo Money"),
 ]
 
 
 class PayoutAccountForm(forms.ModelForm):
+    """Add/edit a payout destination.
+
+    Provider options come in two optgroups — Mobile Money and Banks — and the
+    template's JS only shows the group matching the chosen account type. The
+    server enforces it again in clean() so mismatched codes can't be saved.
+    """
+
     class Meta:
         model = PayoutAccount
         fields = ("kind", "provider_code", "account_number", "account_name")
@@ -19,7 +27,7 @@ class PayoutAccountForm(forms.ModelForm):
             "provider_code": forms.Select(attrs={"class": "w-full rounded-lg border-gray-300"}),
         }
 
-    def __init__(self, *args, bank_choices=None, **kwargs):
+    def __init__(self, *args, momo=None, banks=None, **kwargs):
         super().__init__(*args, **kwargs)
         for name, field in self.fields.items():
             if name != "provider_code":
@@ -28,24 +36,39 @@ class PayoutAccountForm(forms.ModelForm):
                     + " w-full rounded-lg border-gray-300 focus:border-green-600 focus:ring-green-600"
                 ).strip()
 
-        # Payout providers: MoMo providers always; GH banks listed when Paystack's
-        # bank list is reachable (needs API keys + network).
-        providers = [code for code, _ in MOMO_PROVIDERS]
-        provider_options = list(MOMO_PROVIDERS)
-        for choice in bank_choices or []:
-            if choice[0] not in providers:
-                provider_options.append(choice)
-                providers.append(choice[0])
-        self.fields["provider_code"].widget.choices = provider_options
+        # Live MoMo list when available; static fallback otherwise.
+        momo = list(momo or []) or [{"code": c, "name": n} for c, n in MOMO_PROVIDERS]
+        banks = list(banks or [])
+
+        self._allowed = {
+            "momo": {p["code"] for p in momo},
+            "bank": {b["code"] for b in banks},
+        }
+        self._labels = {
+            **{p["code"]: p["name"] for p in momo},
+            **{b["code"]: b["name"] for b in banks},
+        }
+
+        choices = []
+        if momo:
+            choices.append(("Mobile Money", [(p["code"], p["name"]) for p in momo]))
+        if banks:
+            choices.append(("Banks", [(b["code"], b["name"]) for b in banks]))
+        if not choices:  # API unreachable and no fallback — shouldn't happen
+            choices.append(("Mobile Money", [(c, n) for c, n in MOMO_PROVIDERS]))
+        # provider_code is a CharField: grouped options must live on the widget
+        self.fields["provider_code"].widget.choices = choices
 
     def clean(self):
         data = super().clean()
+        kind = data.get("kind") or PayoutAccount.Kind.MOMO
         code = data.get("provider_code")
-        labels = dict(self.fields["provider_code"].widget.choices)
-        if code and code in labels:
-            data["provider_name"] = labels[code]
-        else:
-            raise forms.ValidationError("Choose a payout provider.")
+        allowed = self._allowed.get(kind, set())
+        if not code or code not in allowed:
+            raise forms.ValidationError(
+                "Choose a valid provider for the selected account type."
+            )
+        data["provider_name"] = self._labels.get(code, code)
         return data
 
 

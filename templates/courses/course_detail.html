@@ -108,12 +108,27 @@
         </a>
         <a href="{% url 'community:community' course.slug %}" class="block w-full rounded-xl border border-brand px-4 py-3 text-center font-semibold text-brand hover:bg-brand/5">👥 Community</a>
       {% else %}
-        <a href="{% url 'courses:enroll' course.slug %}" class="block w-full rounded-xl bg-gold px-4 py-3 text-center font-bold text-gray-900 hover:bg-gold-dark">
-          {% if course.is_free %}Start free{% else %}Enroll now{% endif %}
-        </a>
-        <p class="text-center text-xs text-gray-500">
-          Secure checkout via Paystack · Card · MTN MoMo · Telecel · AirtelTigo
-        </p>
+        {% if not request.user.is_authenticated %}
+          <a href="{% url 'accounts:signup' %}?next={% url 'courses:course_detail' course.slug %}"
+             class="block w-full rounded-xl bg-gold px-4 py-3 text-center font-bold text-gray-900 hover:bg-gold-dark">
+            {% if course.is_free %}Sign up to start free{% else %}Sign up to enroll{% endif %}
+          </a>
+          <p class="text-center text-xs text-gray-500">
+            Create a free account first, then check out with Paystack · Card · MTN MoMo · Telecel · AirtelTigo
+          </p>
+        {% else %}
+          <form method="post" action="{% url 'payments:course_checkout' course.slug %}">
+            {% csrf_token %}
+            <button class="block w-full rounded-xl bg-gold px-4 py-3 text-center font-bold text-gray-900 hover:bg-gold-dark">
+              {% if course.is_free %}Enroll now{% else %}Enroll now{% endif %}
+            </button>
+            {% if not course.is_free %}
+              <p class="text-center text-xs text-gray-500">
+                Secure checkout via Paystack · Card · MTN MoMo · Telecel · AirtelTigo
+              </p>
+            {% endif %}
+          </form>
+        {% endif %}
       {% endif %}
 
       <ul class="space-y-2 border-t border-gray-100 pt-4 text-sm text-gray-600">
