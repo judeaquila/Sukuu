@@ -1,6 +1,6 @@
 from django import forms
 
-from .models import PayoutAccount
+from .models import Coupon, PayoutAccount
 
 
 # Fallback mobile-money providers when Paystack's live list is unreachable.
@@ -95,3 +95,84 @@ class WithdrawalRequestForm(forms.Form):
             self.fields["payout_account"].label_from_instance = (
                 lambda a: f"{a.provider_name} {a.masked_account} — {a.account_name}"
             )
+
+
+class CouponForm(forms.ModelForm):
+    """Create/edit a discount code.
+
+    `value` is a single decimal whose meaning follows the coupon kind: a
+    percentage (1-99) for percent coupons, or a GH₵ amount for amount coupons
+    (converted to pesewas in clean()).
+    """
+
+    value = forms.DecimalField(
+        min_value=1, max_digits=8, decimal_places=2,
+        help_text="Percentage off (percent coupons) or GH₵ amount off (amount coupons)",
+    )
+    expires_at = forms.DateTimeField(
+        required=False,
+        widget=forms.DateTimeInput(attrs={"type": "datetime-local"}),
+        help_text="Empty = never expires",
+    )
+
+    class Meta:
+        model = Coupon
+        fields = ("code", "kind", "course", "max_redemptions", "expires_at", "is_active")
+        labels = {"max_redemptions": "Maximum redemptions"}
+
+    def __init__(self, *args, creator=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        for field in self.fields.values():
+            field.widget.attrs.setdefault(
+                "class", "w-full rounded-lg border-gray-300 focus:border-green-600 focus:ring-green-600"
+            )
+        self.fields["code"].widget.attrs["class"] += " uppercase"
+        if creator is not None:
+            from courses.models import Course
+
+            self.fields["course"].queryset = Course.objects.filter(
+                creator=creator, status=Course.Status.PUBLISHED
+            )
+        else:
+            self.fields["course"].queryset = Coupon.objects.none()
+        self.fields["course"].empty_label = "All my paid courses"
+        self.fields["expires_at"].widget.input_formats = (
+            "%Y-%m-%dT%H:%M", "%Y-%m-%d %H:%M",
+        )
+        if self.instance and self.instance.kind == Coupon.Kind.AMOUNT and self.instance.pk:
+            self.fields["value"].initial = self.instance.value / 100
+        if self.instance and self.instance.pk:
+            self.fields["code"].disabled = True
+
+    def clean_code(self):
+        code = (self.cleaned_data.get("code") or "").strip().upper()
+        if not code:
+            raise forms.ValidationError("Enter a coupon code.")
+        qs = Coupon.objects.filter(code__iexact=code)
+        if self.instance.pk:
+            qs = qs.exclude(pk=self.instance.pk)
+        if qs.exists():
+            raise forms.ValidationError("That code is already in use — pick another.")
+        return code
+
+    def clean(self):
+        data = super().clean()
+        kind = data.get("kind") or Coupon.Kind.PERCENT
+        value = data.get("value")
+        if value is not None:
+            if kind == Coupon.Kind.PERCENT:
+                if not 1 <= value <= 99:
+                    self.add_error("value", "Percentage off must be between 1 and 99.")
+                data["value"] = int(value)
+            else:
+                data["value"] = int(value * 100)
+        return data
+
+    def save(self, commit=True):
+        # `value` is a declared form field (not in Meta.fields), so the default
+        # construct_instance() never moves cleaned_data onto the model instance.
+        instance = super().save(commit=False)
+        instance.value = self.cleaned_data.get("value") or 0
+        if commit:
+            instance.save()
+        return instance

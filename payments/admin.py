@@ -3,7 +3,7 @@ from django.shortcuts import redirect, render
 from django.urls import path, reverse
 from django.utils import timezone
 
-from .models import PayoutAccount, Transaction, Withdrawal
+from .models import Coupon, PayoutAccount, Transaction, Withdrawal
 from .services import (
     attempt_paystack_transfer,
     ensure_paystack_recipient,
@@ -26,6 +26,15 @@ class TransactionAdmin(admin.ModelAdmin):
     list_filter = ("status", "payment_channel", "currency")
     search_fields = ("reference", "email", "user__email", "course__title", "paystack_id")
     readonly_fields = ("reference", "amount_minor", "platform_fee_minor", "raw_response")
+
+
+@admin.register(Coupon)
+class CouponAdmin(admin.ModelAdmin):
+    list_display = ("code", "creator", "kind", "display_value", "course", "times_used",
+                    "max_redemptions", "is_active", "expires_at", "created")
+    list_filter = ("kind", "is_active")
+    search_fields = ("code", "creator__email", "course__title")
+    readonly_fields = ("times_used", "created")
 
 
 @admin.register(PayoutAccount)

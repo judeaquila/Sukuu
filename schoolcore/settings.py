@@ -41,6 +41,7 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "django.contrib.humanize",
+    "django.contrib.sitemaps",
     # Local apps
     "accounts",
     "courses",
@@ -123,7 +124,7 @@ LOGOUT_REDIRECT_URL = "home"
 
 # Email — prints to the console in development; set EMAIL_BACKEND=<SMTP backend>,
 # EMAIL_HOST/USER/PASSWORD/PORT etc. in .env for production.
-DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL", "Sukuu <hello@sukuugh.com>")
+DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL", "LearnSasa <hello@learnsasa.com>")
 EMAIL_BACKEND = os.environ.get("EMAIL_BACKEND", "django.core.mail.backends.console.EmailBackend")
 
 # ---------------------------------------------------------------------------

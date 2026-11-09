@@ -1,5 +1,6 @@
 {% extends "base.html" %}
-{% block title %}{{ post.title }} — Sukuu{% endblock %}
+{% block title %}{{ post.title }} — LearnSasa{% endblock %}
+{% block meta %}<meta name="robots" content="noindex">{% endblock %}
 {% block content %}
 <div class="mx-auto max-w-3xl space-y-6">
   <a href="{% url 'community:community' course.slug %}" class="text-sm font-semibold text-gray-500 hover:text-gray-700">← Back to community</a>

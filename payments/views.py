@@ -12,8 +12,8 @@ from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
 
 from courses.models import enrollment_for
-from payments.forms import MOMO_PROVIDERS, PayoutAccountForm, WithdrawalRequestForm
-from payments.models import PayoutAccount, Transaction, Withdrawal
+from payments.forms import CouponForm, MOMO_PROVIDERS, PayoutAccountForm, WithdrawalRequestForm
+from payments.models import Coupon, PayoutAccount, Transaction, Withdrawal
 from payments.paystack import PaystackAPI, PaystackPayoutError, PaystackVerificationError
 from payments.services import (
     apply_transaction,
@@ -22,6 +22,7 @@ from payments.services import (
     creator_earnings_totals,
     ensure_paystack_recipient,
     handle_webhook_event,
+    resolve_coupon,
 )
 
 
@@ -53,6 +54,20 @@ def course_checkout(request, slug):
         return redirect("courses:course_detail", slug)
 
     user = request.user
+    amount_minor = course.price_minor
+    discount_minor = 0
+    coupon = None
+    code = (request.POST.get("coupon") or "").strip()
+    code = (request.POST.get("coupon") or "").strip()
+    if code:
+        coupon_or_none, amount_or_error = resolve_coupon(course, code)
+        if coupon_or_none is None:
+            messages.error(request, amount_or_error)
+            return redirect("courses:course_detail", slug)
+        coupon = coupon_or_none
+        amount_minor = amount_or_error
+        discount_minor = course.price_minor - amount_minor
+
     reference = f"OLTSCH-{uuid.uuid4().hex[:12].upper()}"
     transaction = Transaction.objects.create(
         user=user,
@@ -60,7 +75,9 @@ def course_checkout(request, slug):
         reference=reference,
         email=user.email,
         full_name=user.full_name or "",
-        amount_minor=course.price_minor,
+        amount_minor=amount_minor,
+        discount_minor=discount_minor,
+        coupon=coupon,
         currency=settings.CURRENCY,
         status=Transaction.Status.PENDING,
     )
@@ -121,6 +138,75 @@ def my_purchases(request):
         user=request.user
     ).select_related("course").order_by("-created")
     return render(request, "payments/my_purchases.html", {"transactions": transactions})
+
+
+def _creator_only(request):
+    if not (request.user.is_creator or request.user.is_staff):
+        messages.info(request, "That page is for course creators.")
+        return redirect("courses:dashboard")
+    return None
+
+
+@login_required
+def coupons(request):
+    """Creator's coupon management: list + create/edit form."""
+    response = _creator_only(request)
+    if response:
+        return response
+    user = request.user
+
+    editing = None
+    if request.GET.get("edit"):
+        editing = get_object_or_404(Coupon, pk=request.GET["edit"], creator=user)
+
+    coupon_form = CouponForm(instance=editing, creator=user)
+    if request.method == "POST":
+        action = request.POST.get("action")
+        if action in ("create_coupon", "edit_coupon"):
+            instance = None
+            if action == "edit_coupon":
+                instance = get_object_or_404(
+                    Coupon, pk=request.POST.get("coupon_id"), creator=user
+                )
+            coupon_form = CouponForm(request.POST, instance=instance, creator=user)
+            if coupon_form.is_valid():
+                coupon = coupon_form.save(commit=False)
+                coupon.creator = user
+                coupon.save()
+                messages.success(
+                    request, f"Coupon {coupon.code} saved — share it with your audience!"
+                )
+                return redirect("payments:coupons")
+        elif action == "toggle_coupon":
+            coupon = get_object_or_404(Coupon, pk=request.POST.get("coupon_id"), creator=user)
+            coupon.is_active = not coupon.is_active
+            coupon.save(update_fields=["is_active"])
+            messages.info(
+                request,
+                f"Coupon {coupon.code} is {'live again' if coupon.is_active else "now inactive (students can't redeem it)"}.",
+            )
+            return redirect("payments:coupons")
+
+    return render(
+        request,
+        "payments/coupons.html",
+        {
+            "coupons": Coupon.objects.filter(creator=user),
+            "editing": editing,
+            "coupon_form": coupon_form,
+        },
+    )
+
+
+@login_required
+@require_POST
+def coupon_delete(request, pk):
+    """Permanently remove a coupon (past transactions keep their record)."""
+    coupon = get_object_or_404(Coupon, pk=pk, creator=request.user)
+    code = coupon.code
+    coupon.delete()
+    messages.info(request, f"Coupon {code} deleted.")
+    return redirect("payments:coupons")
 
 
 @require_POST
@@ -239,7 +325,7 @@ def payouts(request):
                     withdrawal.save()
                     messages.success(
                         request,
-                        "Payout requested! The Sukuu team will process it shortly — you can cancel it until it's sent.",
+                        "Payout requested! The LearnSasa team will process it shortly — you can cancel it until it's sent.",
                     )
                     return redirect("payments:payouts")
             else:

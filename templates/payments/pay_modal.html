@@ -1,11 +1,12 @@
 {% extends "base.html" %}
 {% load extras %}
-{% block title %}Checkout — {{ transaction.course.title }} — Sukuu{% endblock %}
+{% block title %}Checkout — {{ transaction.course.title }} — LearnSasa{% endblock %}
+{% block meta %}<meta name="robots" content="noindex">{% endblock %}
 {% block content %}
 
 <div class="mx-auto max-w-lg px-4 py-10">
   <div class="rounded-3xl border border-gray-100 bg-white p-8 shadow-md">
-    <p class="text-xs font-semibold uppercase tracking-wider text-brand">Sukuu Checkout</p>
+    <p class="text-xs font-semibold uppercase tracking-wider text-brand">LearnSasa Checkout</p>
     <h1 class="mt-1 text-xl font-extrabold">{{ transaction.course.title }}</h1>
 
     <div class="mt-4 flex items-center gap-4 rounded-2xl bg-gray-50 p-4 text-sm">
@@ -16,7 +17,15 @@
         <p class="font-semibold text-gray-800">Lifetime access + private community</p>
         <p class="text-xs text-gray-500">Secure checkout via Paystack · Card · MTN MoMo · Telecel · AirtelTigo</p>
       </div>
-      <p class="text-2xl font-extrabold text-brand">{{ transaction.amount_minor|pesewas }}</p>
+      <div class="text-right">
+        {% if transaction.discount_minor %}
+          <p class="text-xs text-gray-400 line-through">{{ transaction.price_list_minor|pesewas }}</p>
+        {% endif %}
+        <p class="text-2xl font-extrabold text-brand">{{ transaction.amount_minor|pesewas }}</p>
+        {% if transaction.discount_minor %}
+          <p class="text-[11px] font-bold text-green-700">You save {{ transaction.discount_minor|pesewas }}</p>
+        {% endif %}
+      </div>
     </div>
 
     <p class="mt-4 text-sm text-gray-600">
@@ -37,7 +46,7 @@
       {% if transaction.user %}
         After payment you'll be taken back to the course page automatically.
       {% else %}
-        After payment you'll be asked to create your Sukuu account — your purchase is already recorded.
+        After payment you'll be asked to create your LearnSasa account — your purchase is already recorded.
       {% endif %}
       <a href="{% url 'payments:checkout_pending' transaction.reference %}" class="ml-1 underline hover:text-gray-700">Check payment status</a>
     </div>

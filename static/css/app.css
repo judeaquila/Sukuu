@@ -9,3 +9,10 @@
 details > summary::-webkit-details-marker {
   display: none;
 }
+
+/* Brand: display font (Baloo 2) for page headings, Inter stays for UI text */
+h1, h2 {
+  font-family: "Baloo 2", Inter, system-ui, sans-serif;
+  letter-spacing: -0.01em;
+}
+

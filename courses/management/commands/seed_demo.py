@@ -24,7 +24,7 @@ class Command(BaseCommand):
         if not User.objects.filter(is_superuser=True).exists():
             User.objects.create_superuser(
                 email="admin@sukuu.gh",
-                full_name="Sukuu Admin",
+                full_name="LearnSasa Admin",
                 password=options["admin_password"],
             )
             self.stdout.write(self.style.SUCCESS("Created admin: admin@sukuu.gh"))
@@ -43,7 +43,7 @@ class Command(BaseCommand):
                 if role == User.Role.CREATOR:
                     CreatorProfile.objects.create(
                         user=user,
-                        headline=f"{full_name.split()[0]} teaches on Sukuu",
+                        headline=f"{full_name.split()[0]} teaches on LearnSasa",
                         bio=f"Practical [{full_name.split()[1] if len(full_name.split())>1 else 'pro'}] training for Ghanaians, by a Ghanaian.",
                     )
             return user, created

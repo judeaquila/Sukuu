@@ -17,4 +17,6 @@ urlpatterns = [
     path("payouts/verify-account/", views.payout_account_verify, name="payout_account_verify"),
     path("payouts/accounts/<int:pk>/remove/", views.payout_account_delete, name="payout_account_delete"),
     path("payouts/requests/<int:pk>/cancel/", views.payout_request_cancel, name="payout_request_cancel"),
+    path("coupons/", views.coupons, name="coupons"),
+    path("coupons/<int:pk>/delete/", views.coupon_delete, name="coupon_delete"),
 ]

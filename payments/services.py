@@ -44,6 +44,38 @@ def creator_balance_minor(user):
     return earnings - (sum(w.amount_minor for w in locked))
 
 
+def resolve_coupon(course, code):
+    """Validate a coupon code against a course.
+
+    Returns (coupon, amount_minor) on success or (None, error_message) on
+    failure. The final amount is always capped so at least GH₵1 is charged —
+    Paystack can't process a GH₵0 charge.
+    """
+    from payments.models import Coupon
+    from django.utils import timezone as _tz
+
+    code = (code or "").strip().upper()
+    if not code:
+        return None, "Enter a coupon code."
+    coupon = Coupon.objects.filter(code__iexact=code).first()
+    if not coupon:
+        return None, "That coupon code doesn't exist."
+    if not coupon.is_active:
+        return None, "That coupon is no longer active."
+    if coupon.is_expired:
+        return None, "That coupon has expired."
+    if not coupon.has_redemptions_left:
+        return None, "That coupon has been fully claimed."
+    if not coupon.applies_to(course):
+        return None, "That coupon doesn't apply to this course."
+    if course.is_free:
+        return None, "Coupons only apply to paid courses."
+    final_minor = course.price_minor - coupon.discount_for(course)
+    if final_minor < 100:
+        return None, "This coupon's discount is too large for this course — choose a smaller discount."
+    return coupon, final_minor
+
+
 def payout_summary(user):
     """Available / pending / paid-out breakdown in minor units (creator dashboard)."""
     earnings = creator_earnings_totals(user)["earnings_minor"]
@@ -84,7 +116,7 @@ PAYOUT_EMAIL_TEMPLATES = {
     Withdrawal.Status.REJECTED: (
         "Your payout of {amount} was not completed",
         "Unfortunately your payout request of {amount} was not completed, and the "
-        "funds have been returned to your Sukuu balance.{note} You can request a "
+        "funds have been returned to your LearnSasa balance.{note} You can request a "
         "new payout at any time from your Payouts page.",
     ),
 }
@@ -133,7 +165,7 @@ def notify_withdrawal_status(withdrawal):
             subject,
             (
                 f"Hi {withdrawal.user.full_name or 'there'},\n\n"
-                f"{body}\n\n— The Sukuu team"
+                f"{body}\n\n— The LearnSasa team"
             ),
             settings.DEFAULT_FROM_EMAIL,
             [withdrawal.user.email],
@@ -228,7 +260,7 @@ def attempt_paystack_transfer(withdrawal):
             amount_minor=withdrawal.amount_minor,
             recipient_code=account.recipient_code,
             reference=reference,
-            reason=f"Sukuu creator payout #{withdrawal.id}",
+            reason=f"LearnSasa creator payout #{withdrawal.id}",
         )
     except PaystackPayoutError as exc:
         logger.warning("Paystack transfer failed for withdrawal %s: %s", withdrawal.id, exc)
@@ -309,6 +341,12 @@ def apply_transaction(transaction, *, paystack_data, raw_response=None):
 
     if transaction.status == Transaction.Status.SUCCESS and was_pending:
         _grant_access(transaction)
+        if transaction.coupon_id:
+            # One redemption per confirmed purchase (webhook retries are guarded above)
+            from payments.models import Coupon
+            from django.db.models import F
+
+            Coupon.objects.filter(pk=transaction.coupon_id).update(times_used=F("times_used") + 1)
     return transaction
 
 

@@ -1,22 +1,30 @@
 {% extends "base.html" %}
 {% load extras %}
 {% load humanize %}
-{% block title %}Marketplace — Sukuu{% endblock %}
+{% block title %}Marketplace — LearnSasa{% endblock %}
 {% block content %}
 
 <!-- Hero -->
-<section class="rounded-3xl bg-brand px-6 py-12 text-center text-white md:px-12 md:py-16">
-  <h1 class="text-3xl font-extrabold leading-tight md:text-5xl">
+<section class="relative overflow-hidden rounded-3xl bg-gradient-to-br from-navy-dark via-navy to-navy-light px-6 py-14 text-center text-white md:px-12 md:py-20">
+  <div class="pointer-events-none absolute -left-16 -top-16 h-56 w-56 rounded-full bg-gold/20 blur-3xl" aria-hidden="true"></div>
+  <div class="pointer-events-none absolute -bottom-20 -right-10 h-64 w-64 rounded-full bg-gold/10 blur-3xl" aria-hidden="true"></div>
+  <h1 class="relative font-display text-4xl font-extrabold leading-tight md:text-6xl">
     Learn from Africa's best.<br>
     <span class="text-gold">Teach what you know.</span>
   </h1>
-  <p class="mx-auto mt-4 max-w-2xl text-brand-50/90 md:text-lg">
-    Sukuu is the online school built for Ghana &amp; Africa — pay with cedis via card or
+  <p class="relative mx-auto mt-5 max-w-2xl text-gray-300 md:text-lg">
+    LearnSasa is the online school built for Ghana &amp; Africa — pay with cedis via card or
     mobile money, join your course's private community, and learn skills that earn.
   </p>
-  <div class="mt-6 flex flex-wrap items-center justify-center gap-3">
+  <div class="relative mt-8 flex flex-wrap items-center justify-center gap-3">
     <a href="#courses" class="rounded-xl bg-gold px-6 py-3 font-semibold text-gray-900 hover:bg-gold-dark">Browse courses</a>
     <a href="{% url 'accounts:signup' %}" class="rounded-xl border border-white/30 px-6 py-3 font-semibold hover:bg-white/10">Become a creator</a>
+  </div>
+  <div class="relative mt-7 flex flex-wrap items-center justify-center gap-1.5 text-[11px] font-semibold text-gray-300">
+    <span class="rounded-full bg-white/10 px-2.5 py-1">Paystack secured</span>
+    <span class="rounded-full bg-white/10 px-2.5 py-1">Card · MTN MoMo</span>
+    <span class="rounded-full bg-white/10 px-2.5 py-1">Telecel Cash</span>
+    <span class="rounded-full bg-white/10 px-2.5 py-1">AirtelTigo Money</span>
   </div>
 </section>
 
@@ -45,23 +53,35 @@
       {% for course in page_obj.object_list %}
         <a href="{% url 'courses:course_detail' course.slug %}"
            class="group flex flex-col overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
-          <div class="aspect-video overflow-hidden bg-gradient-to-br from-brand to-brand-light flex items-center justify-center">
+          <div class="aspect-video relative overflow-hidden bg-gradient-to-br from-brand to-brand-light flex items-center justify-center">
             {% if course.cover_image %}
               <img src="{{ course.cover_image.url }}" alt="{{ course.title }}" class="h-full w-full object-cover">
             {% else %}
               <span class="text-4xl font-black text-white/40">{{ course.title|slice:":2"|upper }}</span>
+            {% endif %}
+            {% if course.is_on_promo %}
+              <span class="absolute top-3 left-3 rounded-full bg-ghred px-3 py-1 text-xs font-bold text-white shadow">
+                🏷 −{{ course.promo_percent }}% OFF
+              </span>
             {% endif %}
           </div>
           <div class="flex flex-1 flex-col p-4">
             <span class="text-[11px] font-semibold uppercase tracking-wide text-brand-light">{{ course.get_category_display }}</span>
             <h3 class="mt-1 font-bold leading-snug group-hover:text-brand">{{ course.title }}</h3>
             <p class="mt-1 text-sm text-gray-500 line-clamp-2">{{ course.summary }}</p>
-            <div class="mt-auto flex items-center justify-between pt-4 text-sm">
+            <div class="mt-auto flex items-end justify-between pt-4 text-sm">
               <span class="truncate text-gray-600">by {{ course.creator.full_name|default:course.creator.email }}</span>
-              <span class="rounded-full px-3 py-1 font-bold
-                {% if course.price == 0 %}bg-green-100 text-green-700{% else %}bg-gold/20 text-gray-800{% endif %}">
-                {{ course.price|ghs }}
-              </span>
+              {% if course.is_on_promo %}
+                <div class="shrink-0 text-right leading-tight">
+                  <span class="rounded-full bg-gold/20 px-3 py-1 font-bold text-gray-800">{{ course.price|ghs }}</span>
+                  <span class="ml-1 text-xs font-semibold text-gray-400 line-through">{{ course.original_price|ghs }}</span>
+                  <p class="mt-0.5 text-[11px] font-bold text-ghred/80">Save {{ course.promo_savings|ghs }}</p>
+                </div>
+              {% elif course.price == 0 %}
+                <span class="rounded-full bg-green-100 px-3 py-1 font-bold text-green-700">Free</span>
+              {% else %}
+                <span class="rounded-full bg-gold/20 px-3 py-1 font-bold text-gray-800">{{ course.price|ghs }}</span>
+              {% endif %}
             </div>
           </div>
         </a>

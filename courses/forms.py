@@ -16,14 +16,32 @@ class BootstrapFormMixin:
 class CourseForm(BootstrapFormMixin, forms.ModelForm):
     class Meta:
         model = Course
-        fields = ("title", "summary", "description", "category", "level", "cover_image", "price", "status")
+        fields = ("title", "summary", "description", "category", "level", "cover_image",
+                  "price", "original_price", "status")
         widgets = {
             "description": forms.Textarea(attrs={"rows": 6}),
         }
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields["price"].help_text = "In GHS (cedis). Leave 0 for a free course."
+        self.fields["price"].help_text = (
+            "In GHS (cedis). Leave 0 for a free course. "
+            "Use the discount calculator below to set old/new prices."
+        )
+        self.fields["original_price"].help_text = (
+            "The old price shown crossed out. Leave empty unless you're running a promo."
+        )
+
+    def clean(self):
+        data = super().clean()
+        price = data.get("price")
+        original_price = data.get("original_price")
+        if price and original_price and original_price <= price:
+            self.add_error(
+                "original_price",
+                "The old (compare-at) price must be higher than the new selling price.",
+            )
+        return data
 
 
 class ModuleForm(BootstrapFormMixin, forms.ModelForm):

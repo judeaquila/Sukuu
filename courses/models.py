@@ -45,6 +45,11 @@ class Course(models.Model):
     cover_image = models.ImageField(upload_to="covers/", blank=True, null=True)
     # Price in major GHS units; 0 means free.
     price = models.DecimalField(max_digits=10, decimal_places=2, default=0, help_text="GHS. Set 0 to make it free.")
+    # Compare-at ("old") price shown struck-through when it's above the price.
+    original_price = models.DecimalField(
+        max_digits=10, decimal_places=2, null=True, blank=True,
+        help_text="Old (compare-at) price for promos — shown struck-through when higher than the price.",
+    )
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.DRAFT)
     created = models.DateTimeField(auto_now_add=True)
     updated = models.DateTimeField(auto_now=True)
@@ -73,6 +78,27 @@ class Course(models.Model):
     def price_minor(self):
         """Price in pesewas, for Paystack."""
         return int(self.price * 100)
+
+    @property
+    def original_price_minor(self):
+        return int(self.original_price * 100) if self.original_price else None
+
+    @property
+    def is_on_promo(self):
+        return bool(self.original_price and self.original_price > self.price and not self.is_free)
+
+    @property
+    def promo_percent(self):
+        if not self.is_on_promo:
+            return None
+        return round((1 - self.price / self.original_price) * 100)
+
+    @property
+    def promo_savings(self):
+        """Cedis saved when buying at the promo price."""
+        if not self.is_on_promo:
+            return None
+        return self.original_price - self.price
 
     @property
     def is_published(self):

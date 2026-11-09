@@ -1,0 +1,151 @@
+{% extends "base.html" %}
+{% load extras %}
+{% block title %}Coupons — LearnSasa{% endblock %}
+{% block meta %}<meta name="robots" content="noindex">{% endblock %}
+{% block content %}
+
+<div class="flex flex-wrap items-center justify-between gap-4">
+  <div>
+    <a href="{% url 'courses:dashboard' %}" class="text-sm font-semibold text-gray-500 hover:text-gray-700">← Creator studio</a>
+    <h1 class="mt-1 text-2xl font-extrabold">🎟️ Discount coupons</h1>
+    <p class="mt-1 text-sm text-gray-500">Share codes with your audience — students apply them at checkout and the saving is taken off your list price.</p>
+  </div>
+</div>
+
+<div class="mt-8 grid gap-6 lg:grid-cols-2">
+  <!-- List -->
+  <div class="space-y-6">
+    <div class="rounded-3xl border border-gray-100 bg-white p-6 shadow-sm">
+      <h2 class="font-display text-lg font-bold">Your coupons</h2>
+      {% if coupons %}
+        <ul class="mt-3 divide-y divide-gray-100 text-sm">
+          {% for coupon in coupons %}
+            <li class="flex flex-wrap items-center justify-between gap-2 py-3">
+              <span>
+                <span class="rounded-lg bg-gold/20 px-2 py-1 font-mono text-sm font-bold tracking-wider">{{ coupon.code }}</span>
+                <strong class="ml-1">{{ coupon.display_value }}</strong>
+                <em class="text-xs text-gray-500">
+                  {{ coupon.course.title|default:"All my paid courses" }}
+                  · used {{ coupon.times_used }}{% if coupon.max_redemptions %}/{{ coupon.max_redemptions }}{% endif %}
+                  {% if coupon.expires_at %} · expires {{ coupon.expires_at|date:"d M, H:i" }}{% endif %}
+                </em>
+              </span>
+              <span class="flex items-center gap-2 text-xs">
+                {% if coupon.is_active %}
+                  <form method="post">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="toggle_coupon">
+                    <input type="hidden" name="coupon_id" value="{{ coupon.id }}">
+                    <button class="rounded-md border border-gray-200 px-2.5 py-1 font-semibold text-gray-600 hover:bg-gray-50">Pause</button>
+                  </form>
+                {% else %}
+                  <form method="post">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="toggle_coupon">
+                    <input type="hidden" name="coupon_id" value="{{ coupon.id }}">
+                    <button class="rounded-md border border-green-200 px-2.5 py-1 font-semibold text-green-700 hover:bg-green-50">Resume</button>
+                  </form>
+                {% endif %}
+                <a href="{% url 'payments:coupons' %}?edit={{ coupon.id }}"
+                   class="rounded-md border border-gray-200 px-2.5 py-1 font-semibold text-gray-600 hover:bg-gray-50">Edit</a>
+                <form method="post" action="{% url 'payments:coupon_delete' coupon.id %}">
+                  {% csrf_token %}
+                  <button class="rounded-md border border-red-200 px-2.5 py-1 font-semibold text-red-600 hover:bg-red-50">Delete</button>
+                </form>
+              </span>
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <p class="mt-3 text-sm text-gray-500">No coupons yet — create your first discount below.</p>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Create / edit -->
+  <div class="rounded-3xl border border-gray-100 bg-white p-6 shadow-sm">
+    {% if editing %}
+      <h2 class="font-display text-lg font-bold">Edit coupon {{ editing.code }}</h2>
+    {% else %}
+      <h2 class="font-display text-lg font-bold">Create a coupon</h2>
+    {% endif %}
+    <form method="post" class="mt-4 space-y-4 text-sm">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="{% if editing %}edit_coupon{% else %}create_coupon{% endif %}">
+      {% if editing %}<input type="hidden" name="coupon_id" value="{{ editing.id }}">{% endif %}
+
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="mb-1 block text-xs font-semibold">Code</label>
+          {{ coupon_form.code }}
+          {% for error in coupon_form.code.errors %}<p class="mt-1 text-xs text-red-600">{{ error }}</p>{% endfor %}
+        </div>
+        <div>
+          <label class="mb-1 block text-xs font-semibold">Type</label>
+          {{ coupon_form.kind }}
+        </div>
+      </div>
+      <div>
+        <label class="mb-1 block text-xs font-semibold">{{ coupon_form.value.label }}</label>
+        {{ coupon_form.value }}
+        <p class="mt-1 text-xs text-gray-400">{{ coupon_form.value.help_text }}</p>
+        {% for error in coupon_form.value.errors %}<p class="mt-1 text-xs text-red-600">{{ error }}</p>{% endfor %}
+      </div>
+      <div>
+        <label class="mb-1 block text-xs font-semibold">Applies to</label>
+        {{ coupon_form.course }}
+      </div>
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="mb-1 block text-xs font-semibold">{{ coupon_form.max_redemptions.label }}</label>
+          {{ coupon_form.max_redemptions }}
+          <p class="mt-1 text-xs text-gray-400">Empty = unlimited</p>
+        </div>
+        <div>
+          <label class="mb-1 block text-xs font-semibold">Expires</label>
+          {{ coupon_form.expires_at }}
+        </div>
+      </div>
+      <div class="flex items-center gap-2">
+        {{ coupon_form.is_active }}
+        <label for="{{ coupon_form.is_active.id_for_label }}" class="text-xs font-semibold">Active (students can redeem)</label>
+      </div>
+      {% if coupon_form.non_field_errors %}<p class="text-xs text-red-600">{{ coupon_form.non_field_errors }}</p>{% endif %}
+      <div class="flex items-center gap-3">
+        <button class="rounded-xl bg-brand px-5 py-2.5 font-semibold text-white hover:bg-brand-dark">
+          {% if editing %}Save changes{% else %}Create coupon{% endif %}
+        </button>
+        {% if editing %}
+          <a href="{% url 'payments:coupons' %}" class="text-sm font-semibold text-gray-500 hover:text-gray-700">Cancel</a>
+        {% endif %}
+      </div>
+    </form>
+  </div>
+</div>
+
+{% endblock %}
+{% block scripts %}
+<script>
+  // Renaming the value field label as the coupon type changes
+  (function () {
+    var kind = document.getElementById("id_kind");
+    var label = document.querySelector('label[for="id_value"]');
+    if (!kind || !label) return;
+    function update() {
+      if (kind.value === "amount") {
+        label.textContent = "Amount off (GHS)";
+        field.placeholder = "";
+        field.min = "0.01";
+      } else {
+        label.textContent = "Percentage off";
+        field.min = "1";
+        field.max = "99";
+      }
+    }
+    var field = document.getElementById("id_value");
+    if (!field) return;
+    kind.addEventListener("change", update);
+    update();
+  })();
+</script>
+{% endblock %}
