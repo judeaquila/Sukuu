@@ -68,6 +68,13 @@
           <div class="flex flex-1 flex-col p-4">
             <span class="text-[11px] font-semibold uppercase tracking-wide text-brand-light">{{ course.get_category_display }}</span>
             <h3 class="mt-1 font-bold leading-snug group-hover:text-brand">{{ course.title }}</h3>
+            {% if course.reviews_count %}
+              <p class="mt-1.5 flex items-center gap-1.5 text-xs">
+                <span class="text-gold">{{ course.reviews_avg|star_string }}</span>
+                <strong class="text-gray-700">{{ course.reviews_avg|floatformat:1 }}</strong>
+                <span class="text-gray-400">({{ course.reviews_count }})</span>
+              </p>
+            {% endif %}
             <p class="mt-1 text-sm text-gray-500 line-clamp-2">{{ course.summary }}</p>
             <div class="mt-auto flex items-end justify-between pt-4 text-sm">
               <span class="truncate text-gray-600">by {{ course.creator.full_name|default:course.creator.email }}</span>

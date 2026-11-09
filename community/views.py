@@ -48,7 +48,7 @@ def community(request, course_slug):
     if access is None:
         return _denied(request, course_slug)
     course, community, is_creator = access
-    posts = community.posts.select_related("author").prefetch_related("comments__author")
+    posts = community.posts.select_related("author", "review").prefetch_related("comments__author")
     return render(
         request,
         "community/community.html",
@@ -79,6 +79,7 @@ def post_detail(request, course_slug, post_id):
             "comment_form": CommentForm(),
             "is_creator": is_creator,
             "liked": request.user in post.likes.all(),
+            "review": post.review,
         },
     )
 

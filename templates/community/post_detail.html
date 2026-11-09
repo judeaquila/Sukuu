@@ -9,6 +9,7 @@
     <div class="flex flex-wrap items-center justify-between gap-3">
       <div>
         {% if post.is_pinned %}<span class="rounded-full bg-gold/20 px-2 py-0.5 text-xs font-bold text-gray-700">📌 Pinned</span>{% endif %}
+        {% if post.review %}<span class="rounded-full bg-gold px-2 py-0.5 text-xs font-bold text-gray-900">⭐ {{ post.review.rating }}/5 review</span>{% endif %}
         <h1 class="mt-1 text-2xl font-extrabold">{{ post.title }}</h1>
         <p class="mt-1 flex flex-wrap items-center gap-2 text-sm text-gray-500">
           <span>{{ post.author.full_name|default:post.author.email }}</span>

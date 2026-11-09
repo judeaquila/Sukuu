@@ -28,6 +28,8 @@ urlpatterns = [
         views.lesson_toggle_complete,
         name="lesson_toggle_complete",
     ),
+    path("reviews/<int:pk>/feature/", views.review_toggle_feature, name="review_feature"),
+    path("<slug:slug>/review/", views.review_submit, name="review_submit"),
     # Course detail last (catches the bare course page)
     path("<slug:slug>/", views.course_detail, name="course_detail"),
 ]

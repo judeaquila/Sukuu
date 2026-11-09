@@ -24,6 +24,10 @@ class Post(models.Model):
     body = models.TextField()
     is_pinned = models.BooleanField(default=False, help_text="Course creator can pin to the top")
     likes = models.ManyToManyField(settings.AUTH_USER_MODEL, blank=True, related_name="liked_posts")
+    # Set when a post is the community mirror of a course review
+    review = models.OneToOneField(
+        "courses.Review", on_delete=models.SET_NULL, blank=True, null=True, related_name="post",
+    )
     created = models.DateTimeField(auto_now_add=True)
 
     class Meta:

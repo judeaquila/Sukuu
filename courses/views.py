@@ -7,16 +7,18 @@ All money movement goes through `payments.paystack`.
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator
-from django.db.models import Count, Q
+from django.db.models import Avg, Count, Q
 from django.http import Http404
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
+from django.utils import timezone
+from django.views.decorators.http import require_POST
 
 from payments.models import Transaction
 from payments.services import payout_summary
 
 from .forms import CourseForm, LessonForm, MaterialForm, ModuleForm
-from .models import Course, Enrollment, Lesson, LessonProgress, Material, Module, enrollment_for
+from .models import Course, Enrollment, Lesson, LessonProgress, Material, Module, Review, enrollment_for
 
 PAGE_SIZE = 12
 
@@ -26,7 +28,11 @@ def home(request):
     courses = (
         Course.objects.filter(status=Course.Status.PUBLISHED)
         .select_related("creator")
-        .annotate(modules=Count("modules_related", distinct=True))
+        .annotate(
+            modules=Count("modules_related", distinct=True),
+            reviews_avg=Avg("reviews__rating"),
+            reviews_count=Count("reviews", distinct=True),
+        )
     )
     query = request.GET.get("q", "").strip()
     category = request.GET.get("category", "").strip()
@@ -70,6 +76,16 @@ def course_detail(request, slug):
     enrollment = enrollment_for(user, course)
     modules = course.modules_related.prefetch_related("lessons")
     curriculum_unlocked = is_creator or bool(enrollment)
+
+    # Reviews: creator-pinned first, then newest
+    featured = course.reviews.filter(is_featured=True).select_related("user")
+    others = course.reviews.filter(is_featured=False).order_by("-created").select_related("user")
+    rating_avg, rating_count = course.rating_stats
+
+    my_review = None
+    if enrollment:
+        my_review = course.reviews.filter(user=user).first()
+
     return render(
         request,
         "courses/course_detail.html",
@@ -79,8 +95,80 @@ def course_detail(request, slug):
             "enrollment": enrollment,
             "is_creator": is_creator,
             "curriculum_unlocked": curriculum_unlocked,
+            "all_reviews": list(featured) + list(others),
+            "rating_avg": rating_avg,
+            "rating_count": rating_count,
+            "my_review": my_review,
+            "now": timezone.now(),
         },
     )
+
+
+@login_required
+@require_POST
+def review_submit(request, slug):
+    """Enrolled students rate/review a course; resubmitting replaces their review."""
+    course = _course_or_404(slug)
+    if request.user == course.creator and not request.user.is_staff:
+        messages.warning(request, "Creators can't review their own course.")
+        return redirect("courses:course_detail", course.slug)
+    if not enrollment_for(request.user, course):
+        messages.warning(request, "Only enrolled students can review a course.")
+        return redirect("courses:course_detail", course.slug)
+
+    try:
+        rating = int(request.POST.get("rating", ""))
+    except ValueError:
+        rating = 0
+    if rating not in (1, 2, 3, 4, 5):
+        messages.error(request, "Pick a star rating before submitting your review.")
+        return redirect(f"{reverse('courses:course_detail', args=[course.slug])}#reviews")
+
+    body = (request.POST.get("body") or "").strip()[:2000]
+    review, created = Review.objects.update_or_create(
+        course=course, user=request.user, defaults={"rating": rating, "body": body}
+    )
+
+    # Mirror the review into the course's community feed; editing the review
+    # updates the same post so the feed never accumulates duplicates.
+    from community.models import Community, Post as CommunityPost
+
+    community_obj, _ = Community.objects.get_or_create(
+        course=course,
+        defaults={"name": f"{course.title} — Community", "description": course.summary},
+    )
+    stars = "★" * rating + "☆" * (5 - rating)
+    CommunityPost.objects.update_or_create(
+        community=community_obj,
+        review=review,
+        defaults={
+            "author": request.user,
+            "title": f"⭐ {rating}-star review",
+            "body": (
+                f"Rated this course {stars} ({rating}/5)\n\n"
+                f"{review.body or 'No written comment — just the stars.'}"
+            ),
+        },
+    )
+
+    messages.success(request, f"Review {'posted' if created else 'updated'} — thank you! It's now in the course community too.")
+    return redirect(f"{reverse('courses:course_detail', args=[course.slug])}#reviews")
+
+
+@login_required
+@require_POST
+def review_toggle_feature(request, pk):
+    """Creator pins/unpins a review on their course's page."""
+    review = get_object_or_404(
+        Review.objects.select_related("course"), pk=pk, course__creator=request.user
+    )
+    review.is_featured = not review.is_featured
+    review.save(update_fields=["is_featured"])
+    messages.info(
+        request,
+        f"Review {'featured on your course page' if review.is_featured else 'unfeatured — it still shows in the list'}'.",
+    )
+    return redirect("courses:course_manage", review.course.slug)
 
 
 @login_required
@@ -193,11 +281,20 @@ def _own_course(user, slug):
 
 @login_required
 def dashboard(request):
-    """Creator home: their courses, sales stats and earnings."""
+    """Creator home: their courses, sales stats, earnings and student reviews."""
     courses = request.user.courses.all().order_by("-created")
     txs = Transaction.objects.filter(course__in=courses, status=Transaction.Status.SUCCESS)
     gross_minor = sum(t.amount_minor for t in txs)
     fees_minor = sum(t.platform_fee_minor for t in txs)
+
+    review_stats = Review.objects.filter(course__creator=request.user).aggregate(
+        avg=Avg("rating"), count=Count("id")
+    )
+    latest_reviews = (
+        Review.objects.filter(course__creator=request.user)
+        .select_related("course", "user")
+        .order_by("-created")[:6]
+    )
     return render(
         request,
         "courses/dashboard.html",
@@ -208,6 +305,9 @@ def dashboard(request):
             "fees_minor": fees_minor,
             "earnings_minor": gross_minor - fees_minor,
             "payout_summary": payout_summary(request.user),
+            "latest_reviews": latest_reviews,
+            "review_avg": (round(review_stats["avg"], 1) if review_stats["count"] else None),
+            "review_count": review_stats["count"],
         },
     )
 
@@ -255,6 +355,7 @@ def course_manage(request, slug):
     txs_by_reference = {
         t.reference: t for t in Transaction.objects.filter(course=course, status=Transaction.Status.SUCCESS)
     }
+    rating_avg, rating_count = course.rating_stats
     return render(
         request,
         "courses/course_manage.html",
@@ -263,6 +364,9 @@ def course_manage(request, slug):
             "modules": modules,
             "students": enroll_students,
             "txs_by_reference": txs_by_reference,
+            "course_reviews": course.reviews.select_related("user").order_by("-created"),
+            "rating_avg": rating_avg,
+            "rating_count": rating_count,
         },
     )
 

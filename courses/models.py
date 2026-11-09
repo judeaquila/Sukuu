@@ -1,6 +1,6 @@
 from django.conf import settings
 from django.db import models
-from django.db.models import Max
+from django.db.models import Avg, Count, Max
 from django.urls import reverse
 from django.utils.text import slugify
 
@@ -99,6 +99,14 @@ class Course(models.Model):
         if not self.is_on_promo:
             return None
         return self.original_price - self.price
+
+    @property
+    def rating_stats(self):
+        """(avg_or_None, count) — one query; use the annotated form in lists."""
+        agg = self.reviews.aggregate(avg=Avg("rating"), n=Count("id"))
+        if not agg["n"]:
+            return None, 0
+        return round(agg["avg"], 1), agg["n"]
 
     @property
     def is_published(self):
@@ -274,3 +282,33 @@ def enrollment_for(user, course):
     if not getattr(user, "is_authenticated", False):
         return None
     return Enrollment.objects.filter(user=user, course=course, is_active=True).first()
+
+
+class Review(models.Model):
+    """A learner's star rating and optional written review of an enrolled course.
+
+    One review per (course, user) — submitting again replaces it. Creators
+    flag individual reviews as featured to pin them at the top of the page.
+    """
+
+    course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name="reviews")
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="reviews"
+    )
+    rating = models.PositiveSmallIntegerField(
+        choices=[(i, f"{i} ★{'★' * (i - 1)}") for i in range(1, 6)]
+    )
+    body = models.TextField(max_length=2000, blank=True)
+    is_featured = models.BooleanField(
+        default=False, help_text="Creator-picked — pinned to the top of the course page."
+    )
+    created = models.DateTimeField(auto_now_add=True)
+    updated = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-created"]
+        unique_together = [("course", "user")]
+        permissions = [("feature_review", "Can feature a review on a course page")]
+
+    def __str__(self):
+        return f"{self.user} — {self.rating}★ on {self.course}"

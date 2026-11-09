@@ -53,6 +53,17 @@ def embed_url(video_url):
     return video_url  # direct MP4 / other
 
 
+@register.filter
+def star_string(value):
+    """Turn a rating into star glyphs, e.g. 4.6 → '★★★★☆' (rounds to nearest)."""
+    try:
+        rating = float(value)
+    except (TypeError, ValueError):
+        rating = 0.0
+    full = max(0, min(5, int(round(rating))))
+    return "★" * full + "☆" * (5 - full)
+
+
 @register.simple_tag
 def commission_rate():
     return settings.PLATFORM_COMMISSION_PERCENT

@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import Course, Enrollment, Lesson, LessonProgress, Material, Module
+from .models import Course, Enrollment, Lesson, LessonProgress, Material, Module, Review
 
 
 class MaterialInline(admin.TabularInline):
@@ -67,3 +67,11 @@ class EnrollmentAdmin(admin.ModelAdmin):
 class LessonProgressAdmin(admin.ModelAdmin):
     list_display = ("enrollment", "lesson", "completed", "completed_at")
     list_filter = ("completed",)
+
+
+@admin.register(Review)
+class ReviewAdmin(admin.ModelAdmin):
+    list_display = ("course", "user", "rating", "is_featured", "created")
+    list_filter = ("rating", "is_featured", "created")
+    search_fields = ("course__title", "user__email", "body")
+    readonly_fields = ("created", "updated")
