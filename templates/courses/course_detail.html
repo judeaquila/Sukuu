@@ -84,7 +84,7 @@
 
     {% if course.description %}
       <div class="rounded-3xl border border-gray-100 bg-white p-6 shadow-sm md:p-8">
-        <h2 class="text-lg font-bold">About this course</h2>
+        <h2 class="text-lg font-bold">About this Course</h2>
         <p class="mt-3 whitespace-pre-line text-gray-700 leading-relaxed">{{ course.description }}</p>
       </div>
     {% endif %}
@@ -114,22 +114,22 @@
           {% endfor %}
         </div>
       {% else %}
-        <p class="mt-3 text-sm text-gray-500">The curriculum is being prepared — check back soon.</p>
+        <p class="mt-3 text-sm text-gray-500">The curriculum is being prepared. Check back soon.</p>
       {% endif %}
     </div>
 
     <!-- Community teaser -->
     <div class="rounded-3xl border border-gold/40 bg-gold/10 p-6 md:p-8">
-      <h2 class="text-lg font-bold">👥 Private community</h2>
+      <h2 class="text-lg font-bold">👥 Private Community</h2>
       <p class="mt-2 text-sm text-gray-700">
-        Every enrollment joins the course's private community — ask questions, share wins and
-        network with classmates, just like a real school.
+        Every enrollment joins the course's private community. Ask questions, share wins and
+        network with classmates, just like a real meetup.
       </p>
     </div>
 
     {% if course.materials.all %}
       <div class="rounded-3xl border border-gray-100 bg-white p-6 shadow-sm md:p-8">
-        <h2 class="text-lg font-bold">📎 Included materials</h2>
+        <h2 class="text-lg font-bold">📎 Included Materials</h2>
         <ul class="mt-3 space-y-1.5 text-sm">
           {% for material in course.materials.all %}
             <li class="flex items-center justify-between gap-2">
@@ -147,7 +147,7 @@
 
     <!-- Reviews -->
     <div id="reviews" class="scroll-mt-24 rounded-3xl border border-gray-100 bg-white p-6 shadow-sm md:p-8">
-      <h2 class="text-lg font-bold">⭐ Learner reviews
+      <h2 class="text-lg font-bold">⭐ Learner Reviews
         {% if rating_count %}
           <span class="ml-1 text-sm font-semibold text-gray-500">
             {{ rating_avg|floatformat:1 }} of 5 · {{ rating_count }} review{{ rating_count|pluralize }}
@@ -165,7 +165,7 @@
         <form method="post" action="{% url 'courses:review_submit' course.slug %}" class="mt-4 rounded-2xl border border-gray-100 bg-gray-50/60 p-4">
           {% csrf_token %}
           <p class="text-sm font-bold">
-            {% if my_review %}Update your review{% else %}Rate this course{% endif %}
+            {% if my_review %}Update your Review{% else %}Rate this Course{% endif %}
           </p>
           <div class="mt-2 flex items-center gap-1" id="rating-picker">
             {% for n in "12345" %}
@@ -180,9 +180,9 @@
           <textarea name="body" rows="3" maxlength="2000" placeholder="Share what you learned (optional)"
                     class="mt-3 w-full rounded-lg border-gray-300 px-3 py-2 text-sm">{{ my_review.body|default:'' }}</textarea>
           <div class="mt-2 flex items-center justify-between">
-            <p class="text-xs text-gray-400">Only enrolled students can review.</p>
+            <p class="text-xs text-gray-400">Only enrolled students can leave a review.</p>
             <button class="rounded-xl bg-brand px-5 py-2 text-sm font-semibold text-white hover:bg-brand-dark">
-              {% if my_review %}Save changes{% else %}Post review{% endif %}
+              {% if my_review %}Save Changes{% else %}Post Review{% endif %}
             </button>
           </div>
         </form>
@@ -212,7 +212,7 @@
           {% endfor %}
         </div>
       {% elif not enrollment and not is_creator %}
-        <p class="mt-4 text-sm text-gray-400">No reviews yet — be the first to share what you think of this course.</p>
+        <p class="mt-4 text-sm text-gray-400">No reviews yet. Be the first to share what you think of this course.</p>
       {% endif %}
     </div>
   </div>
@@ -228,39 +228,39 @@
         <div class="mt-2 inline-flex items-center gap-2 rounded-full bg-ghred/10 px-3 py-1.5 text-xs font-bold text-ghred">
           🔥 {{ course.promo_percent }}% OFF — save {{ course.promo_savings|ghs }}
         </div>
-        <p class="mt-2 text-xs text-gray-500">Limited-time promotional price — enroll before it ends.</p>
+        <p class="mt-2 text-xs text-gray-500">Limited-time promotional price. Enroll before it ends.</p>
       {% else %}
         <p class="text-3xl font-extrabold">{{ course.price|ghs }}</p>
       {% endif %}
 
       {% if is_creator %}
-        <a href="{% url 'courses:course_manage' course.slug %}" class="block w-full rounded-xl bg-brand px-4 py-3 text-center font-semibold text-white hover:bg-brand-dark">Manage course</a>
+        <a href="{% url 'courses:course_manage' course.slug %}" class="block w-full rounded-xl bg-brand px-4 py-3 text-center font-semibold text-white hover:bg-brand-dark">Manage Course</a>
       {% elif enrollment %}
         <a href="{% if course.modules_related.first and course.modules_related.first.lessons.first %}{{ course.modules_related.first.lessons.first.get_absolute_url }}{% else %}{% url 'community:community' course.slug %}{% endif %}"
            class="block w-full rounded-xl bg-brand px-4 py-3 text-center font-semibold text-white hover:bg-brand-dark">
-          ▶ Continue learning
+          ▶ Continue Learning
         </a>
         <a href="{% url 'community:community' course.slug %}" class="block w-full rounded-xl border border-brand px-4 py-3 text-center font-semibold text-brand hover:bg-brand/5">👥 Community</a>
       {% else %}
         {% if not request.user.is_authenticated %}
           <a href="{% url 'accounts:signup' %}?next={% url 'courses:course_detail' course.slug %}"
              class="block w-full rounded-xl bg-gold px-4 py-3 text-center font-bold text-gray-900 hover:bg-gold-dark">
-            {% if course.is_free %}Sign up to start free{% else %}Sign up to enroll{% endif %}
+            {% if course.is_free %}Sign up to start free{% else %}Sign up to Enroll{% endif %}
           </a>
           <p class="text-center text-xs text-gray-500">
-            Create a free account first, then check out with Paystack · Card · MTN MoMo · Telecel · AirtelTigo
+            Create a free account first, then check out with your local currency.
           </p>
         {% else %}
           <form method="post" action="{% url 'payments:course_checkout' course.slug %}" class="space-y-3">
             {% csrf_token %}
             <button class="block w-full rounded-xl bg-gold px-4 py-3 text-center font-bold text-gray-900 hover:bg-gold-dark">
-              {% if course.is_free %}Enroll now{% else %}Enroll now{% endif %}
+              {% if course.is_free %}Enroll Now{% else %}Enroll Now{% endif %}
             </button>
             {% if not course.is_free %}
               <input type="text" name="coupon" placeholder="Coupon code (optional)"
                      class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm uppercase tracking-wider outline-none focus:border-brand focus:ring-brand">
               <p class="text-center text-xs text-gray-500">
-                Secure checkout via Paystack · Card · MTN MoMo · Telecel · AirtelTigo
+                Secure checkout via Paystack
               </p>
             {% endif %}
           </form>
@@ -270,7 +270,7 @@
       <ul class="space-y-2 border-t border-gray-100 pt-4 text-sm text-gray-600">
         <li>✅ Lifetime access</li>
         <li>✅ Private community</li>
-        <li>✅ Learn in cedis (GHS)</li>
+        <li>✅ Pay in your local currency</li>
       </ul>
     </div>
   </aside>

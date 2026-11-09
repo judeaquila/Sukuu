@@ -17,7 +17,7 @@
           {% else %}
             <div class="flex h-24 w-24 items-center justify-center rounded-2xl bg-brand-light text-5xl">🎧</div>
           {% endif %}
-          <p class="text-sm font-semibold text-white/80">Audio lesson — listen here or download below</p>
+          <p class="text-sm font-semibold text-white/80">Audio lesson. Listen here or download below</p>
           <audio controls preload="metadata" src="{{ lesson.audio_file.url }}" class="w-full max-w-xl"></audio>
         </div>
       {% else %}
@@ -47,7 +47,7 @@
             {% csrf_token %}
             <button class="rounded-xl px-4 py-2.5 text-sm font-semibold
               {% if lesson.slug in completed_slugs %}bg-green-100 text-green-700 hover:bg-green-200{% else %}bg-brand text-white hover:bg-brand-dark{% endif %}">
-              {% if lesson.slug in completed_slugs %}✓ Completed — undo{% else %}Mark complete{% endif %}
+              {% if lesson.slug in completed_slugs %}✓ Completed (Undo){% else %}Mark Complete{% endif %}
             </button>
           </form>
         {% endif %}
@@ -60,13 +60,13 @@
       {% if enrollment or is_creator %}
         {% if lesson.video_file or lesson.audio_file %}
           <div class="mt-5 border-t border-gray-100 pt-5">
-            <h3 class="text-sm font-bold text-gray-800">📀 Lesson media</h3>
+            <h3 class="text-sm font-bold text-gray-800">📀 Lesson Media</h3>
             <ul class="mt-2 space-y-1.5 text-sm">
               {% if lesson.video_file %}
-                <li><a href="{{ lesson.video_file.url }}" download class="text-brand font-semibold hover:underline">⬇️ Download video ({{ lesson.video_file.name|truncatechars:40 }})</a></li>
+                <li><a href="{{ lesson.video_file.url }}" download class="text-brand font-semibold hover:underline">⬇️ Download Video ({{ lesson.video_file.name|truncatechars:40 }})</a></li>
               {% endif %}
               {% if lesson.audio_file %}
-                <li><a href="{{ lesson.audio_file.url }}" download class="text-brand font-semibold hover:underline">⬇️ Download audio ({{ lesson.audio_file.name|truncatechars:40 }})</a></li>
+                <li><a href="{{ lesson.audio_file.url }}" download class="text-brand font-semibold hover:underline">⬇️ Download Audio ({{ lesson.audio_file.name|truncatechars:40 }})</a></li>
               {% endif %}
             </ul>
           </div>
@@ -74,7 +74,7 @@
 
         {% if course.materials.all %}
           <div class="mt-5 border-t border-gray-100 pt-5">
-            <h3 class="text-sm font-bold text-gray-800">📎 Course materials</h3>
+            <h3 class="text-sm font-bold text-gray-800">📎 Course Materials</h3>
             <ul class="mt-2 space-y-1.5 text-sm">
               {% for material in course.materials.all %}
                 <li class="flex items-center justify-between gap-2">
@@ -108,7 +108,7 @@
   <!-- Sidebar curriculum -->
   <aside class="lg:col-span-1">
     <div class="sticky top-24 max-h-[80vh] overflow-y-auto rounded-3xl border border-gray-100 bg-white p-4 shadow-md">
-      <p class="px-2 pb-3 text-sm font-bold">Course content</p>
+      <p class="px-2 pb-3 text-sm font-bold">Course Content</p>
       {% for module in modules %}
         <p class="px-2 pt-3 text-xs font-bold uppercase tracking-wide text-gray-500">{{ module.title }}</p>
         <ul class="mt-1 space-y-0.5 text-sm">
