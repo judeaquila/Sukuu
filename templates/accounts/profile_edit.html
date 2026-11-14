@@ -72,5 +72,22 @@
       </button>
     </div>
   </form>
+
+  {% if not user.is_creator %}
+    <!-- Student → creator upgrade -->
+    <div class="mt-6 rounded-2xl bg-brand-50 p-5">
+      <h2 class="font-bold text-brand-dark">Teach on LearnSasa</h2>
+      <p class="mt-1 text-sm text-gray-600">
+        Got a skill to share? Switch on a creator account to publish paid courses, run coupons
+        and receive mobile-money payouts. Your enrollments and profile stay exactly as they are.
+      </p>
+      <form method="post" action="{% url 'accounts:become_creator' %}" class="mt-3">
+        {% csrf_token %}
+        <button class="rounded-xl bg-gold px-5 py-2.5 text-sm font-semibold text-gray-900 hover:bg-gold-dark transition">
+          Become a creator
+        </button>
+      </form>
+    </div>
+  {% endif %}
 </div>
 {% endblock %}

@@ -15,7 +15,10 @@ class PostForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         for name, field in self.fields.items():
             if name != "title":
-                field.widget.attrs["class"] = "w-full rounded-lg border-gray-300 focus:border-green-600 focus:ring-green-600"
+                field.widget.attrs["class"] = (
+                    "w-full rounded-lg border border-gray-300 px-3 py-2 text-sm "
+                    "outline-none focus:border-brand focus:ring-1 focus:ring-brand"
+                )
 
 
 class CommentForm(forms.ModelForm):
@@ -23,5 +26,10 @@ class CommentForm(forms.ModelForm):
         model = Comment
         fields = ("body",)
         widgets = {
-            "body": forms.Textarea(attrs={"rows": 3, "placeholder": "Add a reply…"}),
+            "body": forms.Textarea(attrs={
+                "rows": 3,
+                "placeholder": "Add a reply…",
+                "class": "w-full rounded-lg border border-gray-300 px-3 py-2 text-sm "
+                "outline-none focus:border-brand focus:ring-1 focus:ring-brand",
+            }),
         }

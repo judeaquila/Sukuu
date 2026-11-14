@@ -153,6 +153,10 @@ class Lesson(models.Model):
         help_text="Optional audio version of this lesson (MP3, M4A…)",
     )
     content = models.TextField(blank=True, help_text="Notes shown under the video (supports simple HTML)")
+    duration_seconds = models.PositiveIntegerField(
+        null=True, blank=True,
+        help_text="Approx. length of the video/audio in seconds — shown on the course curriculum.",
+    )
     order = models.PositiveIntegerField(default=0, editable=False)
     is_free_preview = models.BooleanField(default=False, help_text="Non-students can watch this lesson")
     created = models.DateTimeField(auto_now_add=True)
@@ -177,6 +181,17 @@ class Lesson(models.Model):
             agg = self.module.lessons.aggregate(Max("order"))
             self.order = (agg["order__max"] or 0) + 1
         super().save(*args, **kwargs)
+
+    @property
+    def clock(self):
+        """mm:ss (or h:mm:ss) display of the lesson duration. Empty when unset."""
+        if not self.duration_seconds:
+            return ""
+        s = int(self.duration_seconds)
+        h = s // 3600
+        if h:
+            return f"{h}:{s % 3600 // 60:02d}:{s % 60:02d}"
+        return f"{s // 60}:{s % 60:02d}"
 
     @property
     def course(self):

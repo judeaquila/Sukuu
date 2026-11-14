@@ -1,12 +1,16 @@
-{% comment %} LearnSasa wordmark — white rounded letters + gold swoosh + gold dot.
-   Font "Baloo 2" (loaded in base.html) closely matches the brand's rounded letterforms,
-   so the wordmark stays crisp and themeable at any size. {% endcomment %}
+{% comment %} LearnSasa wordmark — rounded Baloo 2 letterforms (matches the brand
+   bubble font), a swoosh underline under "Sasa", and the trailing dot.
+   Pass variant="dark" on blue/navy surfaces (white letters, swoosh & dot —
+   like the LS icon); the default light variant is for white backgrounds
+   (blue letters, swoosh & dot — the wordmark's own colours). {% endcomment %}
 <a href="{% url 'home' %}" aria-label="LearnSasa home"
-   class="inline-flex items-baseline font-display text-[26px] font-extrabold leading-none tracking-tight text-white">
+   class="inline-flex items-baseline font-display text-[26px] font-extrabold leading-none tracking-tight
+   {% if variant == 'dark' %}text-white{% else %}text-brand{% endif %}">
   <span>Learn</span><span class="relative inline-block">Sasa<svg
     class="absolute -bottom-1 left-0 h-[9px] w-full" viewBox="0 0 120 12"
     preserveAspectRatio="none" aria-hidden="true">
-    <path d="M5 9 C 38 2.5, 82 2.5, 115 8" fill="none" stroke="#FCD116"
+    <path d="M5 9 C 38 2.5, 82 2.5, 115 8" fill="none"
+          stroke="{% if variant == 'dark' %}#FFFFFF{% else %}#1366B2{% endif %}"
           stroke-width="4.5" stroke-linecap="round"/>
-  </svg></span><span class="text-gold">.</span>
+  </svg></span><span class="{% if variant == 'dark' %}text-white{% else %}text-brand{% endif %}">.</span>
 </a>

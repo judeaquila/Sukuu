@@ -64,6 +64,25 @@ def star_string(value):
     return "★" * full + "☆" * (5 - full)
 
 
+@register.filter
+def span_text(seconds):
+    """Human video length, e.g. 8850 → '2h 27m'; 300 → '5m'; empty for 0/None."""
+    try:
+        s = int(seconds or 0)
+    except (TypeError, ValueError):
+        s = 0
+    if s <= 0:
+        return ""
+    h, m = s // 3600, (s % 3600) // 60
+    if h and m:
+        return f"{h}h {m}m"
+    if h:
+        return f"{h}h"
+    if s >= 60:
+        return f"{m}m"
+    return f"{s}s"
+
+
 @register.simple_tag
 def commission_rate():
     return settings.PLATFORM_COMMISSION_PERCENT

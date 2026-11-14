@@ -14,9 +14,9 @@
     <form method="post" action="{% url 'community:post_create' course.slug %}" class="rounded-3xl border border-gray-100 bg-white p-6 shadow-sm">
       {% csrf_token %}
       <input type="text" name="title" maxlength="200" required placeholder="Give your post a title…"
-             class="w-full rounded-lg border-gray-300 focus:border-brand focus:ring-brand font-semibold">
+             class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-brand focus:ring-1 focus:ring-brand font-semibold">
       <textarea name="body" rows="5" required placeholder="Share your question, win, or resource…"
-                class="mt-2 w-full rounded-lg border-gray-300 focus:border-brand focus:ring-brand"></textarea>
+                class="mt-2 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-brand focus:ring-1 focus:ring-brand"></textarea>
       <div class="mt-2 flex justify-end">
         <button class="rounded-xl bg-brand px-5 py-2.5 font-semibold text-white hover:bg-brand-dark">Post</button>
       </div>

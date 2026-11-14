@@ -15,10 +15,11 @@
       theme: {
         extend: {
           colors: {
-            /* "brand" + "navy" point at the same deep neutral so the whole
-               platform reads navy; gold is the accent from the logo. */
-            brand: { DEFAULT: '#101828', dark: '#0A0F1C', light: '#1D2939', '50': '#1D2939' },
-            navy: { DEFAULT: '#101828', dark: '#0A0F1C', light: '#1D2939' },
+            /* Brand royal blue from the LearnSasa logo (wordmark dot + swoosh);
+               "navy" aliases it so header/footer chrome follows the logo.
+               Gold (Ghana yellow) remains the accent for CTAs, stars and chips. */
+            brand: { DEFAULT: '#1366B2', dark: '#0D4E8C', light: '#2F8FDE', '50': '#EAF3FB' },
+            navy: { DEFAULT: '#1366B2', dark: '#0D4E8C', light: '#2F8FDE' },
             gold: { DEFAULT: '#FCD116', dark: '#E5B90A' },
             ghred: '#CE1126',
           },
@@ -32,7 +33,7 @@
   </script>
   <link rel="icon" type="image/svg+xml" href="{% static 'img/favicon.svg' %}">
   <link rel="apple-touch-icon" href="{% static 'img/favicon.svg' %}">
-  <meta name="theme-color" content="#101828">
+  <meta name="theme-color" content="#1366B2">
   <meta name="description" content="{% block meta_description %}LearnSasa is the online school built for Ghana &amp; Africa — learn from Africa's best creators, pay with cedis via card or mobile money.{% endblock %}">
   <meta property="og:site_name" content="LearnSasa">
   <meta property="og:type" content="{% block og_type %}website{% endblock %}">
@@ -84,7 +85,7 @@
   <!-- Navigation -->
   <header class="sticky top-0 z-40 border-b border-white/10 bg-navy/95 text-gray-200 backdrop-blur">
     <nav class="mx-auto flex max-w-6xl items-center gap-4 px-4 py-3">
-      {% include "_logo.html" %}
+      {% include "_logo.html" with variant="dark" %}
 
       <form action="{% url 'home' %}" method="get" class="ml-4 hidden flex-1 md:flex">
         <input type="search" name="q" value="{{ request.GET.q|default:'' }}" placeholder="Search courses…"
@@ -111,6 +112,14 @@
             </summary>
             <div class="absolute right-0 mt-2 w-48 rounded-xl border border-gray-100 bg-white p-1 text-gray-700 shadow-lg">
               <a href="{% url 'accounts:profile_edit' %}" class="block rounded-lg px-3 py-2 hover:bg-gray-50">Profile</a>
+              {% if user.role == 'student' %}
+                <form method="post" action="{% url 'accounts:become_creator' %}">
+                  {% csrf_token %}
+                  <button class="block w-full rounded-lg px-3 py-2 text-left font-semibold text-brand hover:bg-brand-50">
+                    Become a creator
+                  </button>
+                </form>
+              {% endif %}
               <form method="post" action="{% url 'accounts:logout' %}">
                 {% csrf_token %}
                 <button class="block w-full rounded-lg px-3 py-2 text-left text-red-600 hover:bg-red-50">Log out</button>
@@ -133,7 +142,7 @@
   <footer class="mt-12 border-t border-white/10 bg-navy text-gray-400">
     <div class="mx-auto grid max-w-6xl gap-10 px-4 py-12 md:grid-cols-[1.4fr_1fr_1fr_1fr]">
       <div>
-        {% include "_logo.html" %}
+        {% include "_logo.html" with variant="dark" %}
         <p class="mt-4 max-w-xs text-sm leading-relaxed">
           Learn from Africa's best creators. Pay with your local currency, join private communities,
           and build skills that earn.

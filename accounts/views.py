@@ -4,10 +4,11 @@ from django.contrib.auth import authenticate, login as auth_login
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
+from django.views.decorators.http import require_POST
 
 from courses.models import Enrollment
 from .forms import CreatorProfileForm, SignUpForm, UserProfileForm
-from .models import User
+from .models import CreatorProfile, User
 
 
 class EmailAuthenticationForm(forms.Form):
@@ -22,7 +23,8 @@ class EmailAuthenticationForm(forms.Form):
         for field in self.fields.values():
             field.widget.attrs.setdefault(
                 "class",
-                "w-full rounded-lg border-gray-300 focus:border-green-600 focus:ring-green-600",
+                "w-full rounded-lg border border-gray-300 px-3 py-2 text-sm "
+                "outline-none focus:border-brand focus:ring-1 focus:ring-brand",
             )
 
     def clean(self):
@@ -94,6 +96,26 @@ def my_learning(request):
         .order_by("-created")
     )
     return render(request, "accounts/my_learning.html", {"enrollments": enrollments})
+
+
+@login_required
+@require_POST
+def become_creator(request):
+    """One-click upgrade: a student opens a creator account.
+
+    Keeps all their enrollments and profile — only the role changes and a
+    (blank) CreatorProfile is created so the studio works immediately.
+    """
+    user = request.user
+    if not user.is_creator:
+        user.role = User.Role.CREATOR
+        user.save(update_fields=["role"])
+        CreatorProfile.objects.get_or_create(user=user)
+        messages.success(
+            request,
+            "You're now a creator! Set up your profile, then publish your first course in Creator Studio.",
+        )
+    return redirect("courses:dashboard")
 
 
 @login_required

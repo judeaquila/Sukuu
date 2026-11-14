@@ -4,13 +4,25 @@ from .models import Course, Lesson, Material, Module
 
 
 class BootstrapFormMixin:
+    """Applies the platform's standard Tailwind styling to every widget.
+
+    Checkboxes and file inputs keep their own look; declared fields that
+    already carry a width class (e.g. the narrow order input) keep it.
+    """
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         for name, field in self.fields.items():
             if name in ("cover_image",) or name.endswith("_file") or name == "file":
                 continue
+            if isinstance(field.widget, forms.CheckboxInput):
+                continue
             css = field.widget.attrs.get("class", "")
-            field.widget.attrs["class"] = f"{css} w-full rounded-lg border-gray-300 focus:border-green-600 focus:ring-green-600".strip()
+            width = "" if any(c.startswith("w-") for c in css.split()) else "w-full"
+            field.widget.attrs["class"] = (
+                f"{css} {width} rounded-lg border border-gray-300 px-3 py-2 text-sm "
+                "outline-none focus:border-brand focus:ring-1 focus:ring-brand"
+            ).strip()
 
 
 class CourseForm(BootstrapFormMixin, forms.ModelForm):
@@ -47,7 +59,7 @@ class CourseForm(BootstrapFormMixin, forms.ModelForm):
 class ModuleForm(BootstrapFormMixin, forms.ModelForm):
     order = forms.IntegerField(
         required=False, min_value=1,
-        widget=forms.NumberInput(attrs={"min": 1, "class": "w-24 rounded-lg border-gray-300"}),
+        widget=forms.NumberInput(attrs={"min": 1, "class": "w-24"}),
         help_text="Position in the curriculum (1 = first).",
     )
 
@@ -77,14 +89,24 @@ class ModuleForm(BootstrapFormMixin, forms.ModelForm):
 class LessonForm(BootstrapFormMixin, forms.ModelForm):
     order = forms.IntegerField(
         required=False, min_value=1,
-        widget=forms.NumberInput(attrs={"min": 1, "class": "w-24 rounded-lg border-gray-300"}),
+        widget=forms.NumberInput(attrs={"min": 1, "class": "w-24"}),
         help_text="Position inside the module (1 = first).",
+    )
+    duration_minutes = forms.DecimalField(
+        required=False, min_value=0.01, max_digits=8, decimal_places=2,
+        label="Duration (minutes)",
+        widget=forms.NumberInput(attrs={"step": "any", "class": "w-32"}),
+        help_text="Rough length of the video/audio, e.g. 7.5 — totals show on the course page.",
+        error_messages={
+            "invalid": "Enter the duration in minutes, e.g. 7.5.",
+            "max_decimal_places": "Use at most 2 decimal places, e.g. 7.5 or 7.25.",
+        },
     )
 
     class Meta:
         model = Lesson
         fields = (
-            "module", "title", "video_url", "video_file", "audio_file",
+            "module", "title", "video_url", "video_file", "audio_file", "duration_minutes",
             "content", "is_free_preview",
         )
         widgets = {
@@ -95,9 +117,10 @@ class LessonForm(BootstrapFormMixin, forms.ModelForm):
         super().__init__(*args, **kwargs)
         if course is not None:
             self.fields["module"].queryset = Module.objects.filter(course=course)
-        self.fields["module"].widget.attrs["class"] += " w-full rounded-lg border-gray-300"
         if self.instance and self.instance.pk:
             self.fields["order"].initial = self.instance.order
+            if self.instance.duration_seconds:
+                self.fields["duration_minutes"].initial = round(self.instance.duration_seconds / 60, 2)
         else:
             self.fields["order"].help_text = "Leave blank to add it last in the module."
 
@@ -108,6 +131,8 @@ class LessonForm(BootstrapFormMixin, forms.ModelForm):
             lesson.order = order
         elif not lesson.pk:
             lesson.order = 0  # model auto-assigns "last"
+        minutes = self.cleaned_data.get("duration_minutes")
+        lesson.duration_seconds = int(round(float(minutes) * 60)) if minutes else None
         if commit:
             lesson.save()
         return lesson
@@ -119,6 +144,9 @@ class MaterialForm(forms.ModelForm):
         fields = ("title", "file")
         widgets = {
             "title": forms.TextInput(
-                attrs={"class": "w-full rounded-lg border-gray-300 focus:border-green-600 focus:ring-green-600"}
+                attrs={
+                    "class": "w-full rounded-lg border border-gray-300 px-3 py-2 text-sm "
+                    "outline-none focus:border-brand focus:ring-1 focus:ring-brand"
+                }
             ),
         }

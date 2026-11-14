@@ -24,7 +24,9 @@ class PayoutAccountForm(forms.ModelForm):
         model = PayoutAccount
         fields = ("kind", "provider_code", "account_number", "account_name")
         widgets = {
-            "provider_code": forms.Select(attrs={"class": "w-full rounded-lg border-gray-300"}),
+            "provider_code": forms.Select(attrs={
+                "class": "w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-brand focus:ring-1 focus:ring-brand"
+            }),
         }
 
     def __init__(self, *args, momo=None, banks=None, **kwargs):
@@ -33,7 +35,8 @@ class PayoutAccountForm(forms.ModelForm):
             if name != "provider_code":
                 field.widget.attrs["class"] = (
                     field.widget.attrs.get("class", "")
-                    + " w-full rounded-lg border-gray-300 focus:border-green-600 focus:ring-green-600"
+                    + " w-full rounded-lg border border-gray-300 px-3 py-2 text-sm "
+                    "outline-none focus:border-brand focus:ring-1 focus:ring-brand"
                 ).strip()
 
         # Live MoMo list when available; static fallback otherwise.
@@ -76,14 +79,19 @@ class WithdrawalRequestForm(forms.Form):
     payout_account = forms.ModelChoiceField(
         queryset=PayoutAccount.objects.none(),
         label="Pay out to",
-        widget=forms.Select(attrs={"class": "w-full rounded-lg border-gray-300"}),
+        widget=forms.Select(attrs={
+            "class": "w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-brand focus:ring-1 focus:ring-brand"
+        }),
     )
     amount = forms.DecimalField(
         label="Amount (GHS)",
         min_value=0.01,
         max_digits=10,
         decimal_places=2,
-        widget=forms.NumberInput(attrs={"step": "0.01", "class": "w-full rounded-lg border-gray-300"}),
+        widget=forms.NumberInput(attrs={
+            "step": "0.01",
+            "class": "w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-brand focus:ring-1 focus:ring-brand",
+        }),
     )
 
     def __init__(self, *args, user=None, **kwargs):
@@ -123,8 +131,12 @@ class CouponForm(forms.ModelForm):
     def __init__(self, *args, creator=None, **kwargs):
         super().__init__(*args, **kwargs)
         for field in self.fields.values():
+            if isinstance(field.widget, forms.CheckboxInput):
+                continue  # checkboxes get their own styling
             field.widget.attrs.setdefault(
-                "class", "w-full rounded-lg border-gray-300 focus:border-green-600 focus:ring-green-600"
+                "class",
+                "w-full rounded-lg border border-gray-300 px-3 py-2 text-sm "
+                "outline-none focus:border-brand focus:ring-1 focus:ring-brand",
             )
         self.fields["code"].widget.attrs["class"] += " uppercase"
         if creator is not None:

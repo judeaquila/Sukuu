@@ -119,9 +119,12 @@
                 <span class="w-4 text-center">
                   {% if enrollment or is_creator %}
                     {% if l.slug in completed_slugs %}✅{% else %}▶️{% endif %}
-                  {% else %}🔒{% endif %}
+                  {% elif l.is_free_preview %}▶️{% else %}🔒{% endif %}
                 </span>
                 <span class="flex-1 truncate">{{ l.title }}</span>
+                {% if l.is_free_preview and not enrollment and not is_creator %}
+                  <span class="shrink-0 text-[10px] font-bold uppercase text-gold">Free</span>
+                {% endif %}
               </a>
             </li>
           {% endfor %}

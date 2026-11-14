@@ -89,28 +89,86 @@
       </div>
     {% endif %}
 
+    <!-- Creator snapshot -->
+    <div class="rounded-3xl border border-gray-100 bg-white p-6 shadow-sm md:p-8">
+      <div class="flex flex-wrap items-center gap-4">
+        {% if creator_profile and creator_profile.avatar %}
+          <img src="{{ creator_profile.avatar.url }}" alt="{{ creator.full_name }}"
+               class="h-16 w-16 rounded-full object-cover">
+        {% elif creator.avatar_url %}
+          <img src="{{ creator.avatar_url }}" alt="{{ creator.full_name }}"
+               class="h-16 w-16 rounded-full object-cover">
+        {% else %}
+          <span class="flex h-16 w-16 items-center justify-center rounded-full bg-brand text-2xl font-black text-white">
+            {{ creator.full_name|default:creator.email|slice:":1"|upper }}
+          </span>
+        {% endif %}
+        <div class="min-w-0 flex-1">
+          <p class="text-xs font-semibold uppercase tracking-wide text-gray-400">Your instructor</p>
+          <h2 class="text-lg font-bold">{{ creator.full_name|default:creator.email }}</h2>
+          {% if creator_profile and creator_profile.headline %}
+            <p class="text-sm font-semibold text-brand">{{ creator_profile.headline }}</p>
+          {% endif %}
+        </div>
+      </div>
+      {% if creator_profile and creator_profile.bio %}
+        <p class="mt-3 line-clamp-4 text-sm leading-relaxed text-gray-700">{{ creator_profile.bio|linebreaksbr }}</p>
+      {% else %}
+        <p class="mt-3 text-sm text-gray-400">This creator hasn't written a bio yet.</p>
+      {% endif %}
+      <div class="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-gray-100 pt-3 text-xs text-gray-500">
+        <span>🎓 {{ creator_published_count }} course{{ creator_published_count|pluralize }}</span>
+        <span>👥 {{ creator_students }} student{{ creator_students|pluralize }}</span>
+        {% if creator_profile and creator_profile.website %}
+          <a href="{{ creator_profile.website }}" target="_blank" rel="noopener" class="hover:text-brand">🔗 Website</a>
+        {% endif %}
+        <a href="{% url 'accounts:creator_public' creator.email %}"
+           class="ml-auto font-semibold text-brand hover:underline">View full profile →</a>
+      </div>
+    </div>
+
     <!-- Curriculum -->
     <div class="rounded-3xl border border-gray-100 bg-white p-6 shadow-sm md:p-8">
       <h2 class="text-lg font-bold">Curriculum</h2>
       {% if modules %}
-        <div class="mt-4 space-y-4">
-          {% for module in modules %}
-            <div class="rounded-2xl border border-gray-100 bg-gray-50/60 p-4">
-              <p class="font-bold text-gray-800">{{ forloop.counter }}. {{ module.title }}</p>
-              <ul class="mt-2 space-y-1 text-sm">
-                {% for lesson in module.lessons.all %}
-                  <li class="flex items-center justify-between py-0.5">
-                    {% if curriculum_unlocked %}
-                      <a href="{{ lesson.get_absolute_url }}" class="text-brand hover:underline">▶ {{ lesson.title }}</a>
-                    {% elif lesson.is_free_preview %}
-                      <a href="{{ lesson.get_absolute_url }}" class="text-brand hover:underline">▶ {{ lesson.title }} <em class="text-xs text-gold">(free preview)</em></a>
-                    {% else %}
-                      <span class="text-gray-500">🔒 {{ lesson.title }}</span>
-                    {% endif %}
+        <div class="mt-2 flex flex-wrap gap-2 text-xs font-semibold">
+          <span class="rounded-full bg-gray-100 px-3 py-1 text-gray-600">📚 {{ total_lessons }} lesson{{ total_lessons|pluralize }}</span>
+          {% if total_seconds %}
+            <span class="rounded-full bg-gray-100 px-3 py-1 text-gray-600">⏱️ {{ total_seconds|span_text }} of video & audio</span>
+          {% endif %}
+          {% if materials_count %}
+            <span class="rounded-full bg-gray-100 px-3 py-1 text-gray-600">📎 {{ materials_count }} downloadable material{{ materials_count|pluralize }}</span>
+          {% endif %}
+        </div>
+        <div class="mt-4 space-y-3">
+          {% for item in curriculum %}
+            <details class="group rounded-2xl border border-gray-100 bg-gray-50/60 p-4 {% if forloop.first %}open{% endif %}">
+              <summary class="flex cursor-pointer select-none flex-wrap items-center justify-between gap-2 [&::-webkit-details-marker]:hidden">
+                <span class="font-bold text-gray-800">{{ forloop.counter }}. {{ item.module.title }}</span>
+                <span class="flex items-center gap-2 text-xs font-semibold text-gray-500">
+                  {{ item.count }} lesson{{ item.count|pluralize }}{% if item.span %} · {{ item.span }}{% endif %}
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-gray-400 transition-transform group-open:rotate-90" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/>
+                  </svg>
+                </span>
+              </summary>
+              <ul class="mt-2 space-y-1 border-t border-gray-100 pt-2 text-sm">
+                {% for lesson in item.lessons %}
+                  <li class="flex items-center justify-between gap-2 py-1">
+                    <span class="min-w-0 truncate">
+                      {% if curriculum_unlocked %}
+                        <a href="{{ lesson.get_absolute_url }}" class="text-brand hover:underline">▶ {{ lesson.title }}</a>
+                      {% elif lesson.is_free_preview %}
+                        <a href="{{ lesson.get_absolute_url }}" class="text-brand hover:underline">▶ {{ lesson.title }} <em class="text-xs text-gold">(free preview)</em></a>
+                      {% else %}
+                        <span class="text-gray-500">🔒 {{ lesson.title }}</span>
+                      {% endif %}
+                    </span>
+                    <span class="shrink-0 text-xs text-gray-400">{% if lesson.clock %}⏱ {{ lesson.clock }}{% endif %}</span>
                   </li>
                 {% endfor %}
               </ul>
-            </div>
+            </details>
           {% endfor %}
         </div>
       {% else %}
@@ -178,7 +236,7 @@
             {% if my_review %}<span class="ml-2 text-xs font-semibold text-gray-400">current: {{ my_review.rating }}★</span>{% endif %}
           </div>
           <textarea name="body" rows="3" maxlength="2000" placeholder="Share what you learned (optional)"
-                    class="mt-3 w-full rounded-lg border-gray-300 px-3 py-2 text-sm">{{ my_review.body|default:'' }}</textarea>
+                    class="mt-3 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-brand focus:ring-1 focus:ring-brand">{{ my_review.body|default:'' }}</textarea>
           <div class="mt-2 flex items-center justify-between">
             <p class="text-xs text-gray-400">Only enrolled students can leave a review.</p>
             <button class="rounded-xl bg-brand px-5 py-2 text-sm font-semibold text-white hover:bg-brand-dark">
@@ -215,6 +273,36 @@
         <p class="mt-4 text-sm text-gray-400">No reviews yet. Be the first to share what you think of this course.</p>
       {% endif %}
     </div>
+
+    <!-- More by this creator / Similar in category -->
+    {% if more_by_creator or similar_courses %}
+      <div class="grid gap-6 md:grid-cols-2">
+        {% if more_by_creator %}
+          <div>
+            <h2 class="text-lg font-bold">
+              More courses by {{ creator.full_name|default:creator.email|truncatechars:30 }}
+            </h2>
+            <div class="mt-3 space-y-3">
+              {% for c in more_by_creator %}
+                {% include "courses/_course_mini.html" %}
+              {% endfor %}
+              <a href="{% url 'accounts:creator_public' creator.email %}"
+                 class="inline-block text-sm font-semibold text-brand hover:underline">See all {{ creator_published_count }} courses →</a>
+            </div>
+          </div>
+        {% endif %}
+        {% if similar_courses %}
+          <div>
+            <h2 class="text-lg font-bold">Similar in {{ course.get_category_display }}</h2>
+            <div class="mt-3 space-y-3">
+              {% for c in similar_courses %}
+                {% include "courses/_course_mini.html" %}
+              {% endfor %}
+            </div>
+          </div>
+        {% endif %}
+      </div>
+    {% endif %}
   </div>
 
   <!-- Sidebar -->
@@ -268,6 +356,9 @@
       {% endif %}
 
       <ul class="space-y-2 border-t border-gray-100 pt-4 text-sm text-gray-600">
+        {% if total_seconds %}<li>⏱️ ~{{ total_seconds|span_text }} of video & audio</li>{% endif %}
+        {% if total_lessons %}<li>📚 {{ total_lessons }} lessons in {{ curriculum|length }} module{{ curriculum|length|pluralize }}</li>{% endif %}
+        {% if materials_count %}<li>📎 {{ materials_count }} downloadable material{{ materials_count|pluralize }}</li>{% endif %}
         <li>✅ Lifetime access</li>
         <li>✅ Private community</li>
         <li>✅ Pay in your local currency</li>

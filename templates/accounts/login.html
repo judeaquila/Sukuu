@@ -3,8 +3,9 @@
 {% block content %}
 <div class="mx-auto max-w-md">
   <div class="rounded-3xl border border-gray-100 bg-white p-8 shadow-sm">
-    <h1 class="text-2xl font-extrabold">Welcome back</h1>
-    <p class="mt-1 text-sm text-gray-500">Log in with your email and password.</p>
+    <div class="flex justify-center">{% include "_logo.html" %}</div>
+    <h1 class="mt-3 text-center text-2xl font-extrabold">Welcome back</h1>
+    <p class="mt-1 text-center text-sm text-gray-500">Log in with your email and password.</p>
     <form method="post" class="mt-6 space-y-4">
       {% csrf_token %}
       {% for field in form %}

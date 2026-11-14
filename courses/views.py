@@ -19,6 +19,7 @@ from payments.services import payout_summary
 
 from .forms import CourseForm, LessonForm, MaterialForm, ModuleForm
 from .models import Course, Enrollment, Lesson, LessonProgress, Material, Module, Review, enrollment_for
+from .templatetags.extras import span_text
 
 PAGE_SIZE = 12
 
@@ -77,6 +78,26 @@ def course_detail(request, slug):
     modules = course.modules_related.prefetch_related("lessons")
     curriculum_unlocked = is_creator or bool(enrollment)
 
+    # Curriculum stats: per-module lesson count + media time, course totals
+    curriculum = []
+    total_lessons = 0
+    total_seconds = 0
+    for module in modules:
+        lessons = list(module.lessons.all())
+        seconds = sum(l.duration_seconds or 0 for l in lessons)
+        total_lessons += len(lessons)
+        total_seconds += seconds
+        curriculum.append(
+            {
+                "module": module,
+                "lessons": lessons,
+                "count": len(lessons),
+                "seconds": seconds,
+                "span": span_text(seconds),
+            }
+        )
+    materials_count = course.materials.count()
+
     # Reviews: creator-pinned first, then newest
     featured = course.reviews.filter(is_featured=True).select_related("user")
     others = course.reviews.filter(is_featured=False).order_by("-created").select_related("user")
@@ -85,6 +106,30 @@ def course_detail(request, slug):
     my_review = None
     if enrollment:
         my_review = course.reviews.filter(user=user).first()
+
+    # Creator snapshot + more of their courses
+    creator = course.creator
+    creator_profile = getattr(creator, "creator_profile", None)
+    more_by_creator = list(
+        Course.objects.filter(status=Course.Status.PUBLISHED, creator=creator)
+        .exclude(pk=course.pk)
+        .select_related("creator")
+        .annotate(reviews_avg=Avg("reviews__rating"), reviews_count=Count("reviews", distinct=True))
+        .order_by("-created")[:3]
+    )
+    similar_courses = (
+        Course.objects.filter(status=Course.Status.PUBLISHED, category=course.category)
+        .exclude(pk__in=[course.pk, *[c.pk for c in more_by_creator]])
+        .select_related("creator")
+        .annotate(reviews_avg=Avg("reviews__rating"), reviews_count=Count("reviews", distinct=True))
+        .order_by("-reviews_count", "-created")[:3]
+    )
+    creator_published_count = Course.objects.filter(
+        status=Course.Status.PUBLISHED, creator=creator
+    ).count()
+    creator_students = Enrollment.objects.filter(
+        course__creator=creator, is_active=True
+    ).values("user").distinct().count()
 
     return render(
         request,
@@ -95,11 +140,21 @@ def course_detail(request, slug):
             "enrollment": enrollment,
             "is_creator": is_creator,
             "curriculum_unlocked": curriculum_unlocked,
+            "curriculum": curriculum,
+            "total_lessons": total_lessons,
+            "total_seconds": total_seconds,
+            "materials_count": materials_count,
             "all_reviews": list(featured) + list(others),
             "rating_avg": rating_avg,
             "rating_count": rating_count,
             "my_review": my_review,
             "now": timezone.now(),
+            "creator": creator,
+            "creator_profile": creator_profile,
+            "more_by_creator": more_by_creator,
+            "similar_courses": similar_courses,
+            "creator_published_count": creator_published_count,
+            "creator_students": creator_students,
         },
     )
 

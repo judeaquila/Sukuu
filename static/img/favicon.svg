@@ -1,6 +1,15 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
-  <rect width="64" height="64" rx="14" fill="#101828"/>
-  <text x="12" y="41" font-family="ui-rounded, 'Segoe UI', Arial, sans-serif" font-size="37" font-weight="800" fill="#FFFFFF">L</text>
-  <path d="M13 49 C 27 43.5, 45 43.5, 54 48" stroke="#FCD116" stroke-width="5" fill="none" stroke-linecap="round"/>
-  <circle cx="54" cy="53" r="3.6" fill="#FCD116"/>
+  <!-- LearnSasa icon: royal blue tile, white bubble L+S, swoosh + dot -->
+  <rect width="64" height="64" rx="14" fill="#1366B2"/>
+  <!-- L -->
+  <path d="M22 15.5 V36.5 H33.5" fill="none" stroke="#FFFFFF" stroke-width="10"
+        stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- S -->
+  <path d="M48.5 18.5 C45 15.5 38 15.8 36.2 20 C34.6 23.8 38.6 26.2 43.2 27.8 C48.4 29.6 50.6 33.6 48.2 37.4 C45.6 41.6 38 41.2 35 37.6"
+        fill="none" stroke="#FFFFFF" stroke-width="9.5" stroke-linecap="round"/>
+  <!-- swoosh (kept clear of the letters) -->
+  <path d="M13 54 C 25 46.5, 42 46.5, 50.5 52" stroke="#FFFFFF" stroke-width="5.5"
+        fill="none" stroke-linecap="round"/>
+  <!-- dot -->
+  <circle cx="54.5" cy="54" r="3.8" fill="#FFFFFF"/>
 </svg>
